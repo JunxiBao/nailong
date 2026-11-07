@@ -96,7 +96,10 @@ export class GameApp {
   // Gameplay state
   private currentLevel: LevelConfig = CAMPAIGN_LEVELS[0];
   private isEndless = false;
-  private endlessNextMilestone = 2500;
+  private endlessNextMilestone = 3500;
+  private endlessStepGap = 3500;
+  private endlessTier = 0;
+  private usedContinue = false;
   private engine!: BoardEngine;
   private renderGrid: CellState[][] = [];
 
@@ -198,14 +201,17 @@ export class GameApp {
     this.audio.unlock();
     this.currentLevel = level;
     this.isEndless = endless;
-    this.endlessNextMilestone = 2500;
+    this.endlessNextMilestone = 3500;
+    this.endlessStepGap = 3500;
+    this.endlessTier = 0;
+    this.usedContinue = false;
     this.engine = new BoardEngine(level);
     this.renderGrid = this.engine.cloneGrid();
 
     this.score = 0;
     this.movesLeft = level.moves;
     this.movesUsed = 0;
-    this.bellyEnergy = 25;
+    this.bellyEnergy = 0;
     this.bossHp = level.bossMaxHp ?? 0;
     this.bossHurtTimer = 0;
     this.bossAttackTimer = 0;
@@ -444,7 +450,11 @@ export class GameApp {
               <div class="panel-heading">
                 <span>🎯 目标</span>
                 <span class="palette-preview" title="本关棋盘可消除元素表">
-                  ${this.isEndless ? '<span style="font-size:11px;color:#b45309;">每2500分+4步</span>' : this.buildPalettePreviewHtml()}
+                  ${
+                    this.isEndless
+                      ? `<span id="hud-endless-target" style="font-size:11px;color:#b45309;">下一档:${this.endlessNextMilestone}分(+3步)</span>`
+                      : this.buildPalettePreviewHtml()
+                  }
                 </span>
               </div>
               <div class="goals-list" id="hud-goals">
@@ -616,6 +626,11 @@ export class GameApp {
 
     const goalsEl = document.getElementById('hud-goals');
     if (goalsEl) goalsEl.innerHTML = this.buildGoalsHtml();
+
+    const endlessTargetEl = document.getElementById('hud-endless-target');
+    if (endlessTargetEl && this.isEndless) {
+      endlessTargetEl.textContent = `下一档:${this.endlessNextMilestone}分(+3步)`;
+    }
 
     const speechEl = document.getElementById('hud-speech');
     if (speechEl) speechEl.textContent = this.speechText;
@@ -1065,11 +1080,16 @@ export class GameApp {
     // Endless mode milestones!
     if (this.isEndless) {
       while (this.score >= this.endlessNextMilestone) {
-        this.movesLeft += 4;
-        this.endlessNextMilestone += 2500;
-        this.progress.boosters.hammer++;
+        this.endlessTier++;
+        this.movesLeft += 3;
+        this.endlessStepGap += 700;
+        this.endlessNextMilestone += this.endlessStepGap;
+        const gotHammer = this.endlessTier % 2 === 0;
+        if (gotHammer) {
+          this.progress.boosters.hammer++;
+        }
         this.audio.playVictory();
-        this.speechText = `干饭突破新里程碑！奖励 +4 步与小七木槌！`;
+        this.speechText = `干饭突破第 ${this.endlessTier} 档里程碑！奖励 +3 步${gotHammer ? '与小七木槌' : ''}！`;
       }
       if (this.score > this.progress.endlessBestScore) {
         this.progress.endlessBestScore = this.score;
@@ -1126,12 +1146,13 @@ export class GameApp {
       this.movesLeft > 0 &&
       this.movesUsed % (this.currentLevel.bossAttackInterval ?? 3) === 0
     ) {
-      const sabotaged = this.engine.triggerBossSabotage(2);
+      const sabotageCount = (this.currentLevel.bossMaxHp ?? 0) >= 1600 ? 3 : 2;
+      const sabotaged = this.engine.triggerBossSabotage(sabotageCount);
       this.renderGrid = this.engine.cloneGrid();
       if (sabotaged.length > 0) {
         this.bossAttackTimer = 1.2;
         this.boardShake = 7;
-        this.speechText = '哎呀！暴暴龙往棋盘扔了捣乱障碍，快消除它！';
+        this.speechText = '哎呀！暴暴龙派小紫兵扔了捣乱障碍，快消除它！';
         this.updateHudDom();
         await this.sleep(300);
       }
@@ -1157,9 +1178,12 @@ export class GameApp {
     } else if (combo === 4) {
       title = '肚肚酷酷! AMAZING!';
       stickerId = 'nailong_cool';
-    } else if (combo === 3 || hasSpecial) {
+    } else if (combo === 3) {
       title = '真香暴击! GREAT!';
       stickerId = 'nailong_happy';
+    } else if (hasSpecial) {
+      title = '特效轰炸! NICE!';
+      stickerId = 'minion_twin';
     }
 
     this.comboBanner = {
@@ -1206,7 +1230,7 @@ export class GameApp {
         <div class="pixel-box modal-card">
           <h2 style="margin:0 0 6px;">📒 奶龙像素表情包图鉴</h2>
           <div style="font-size:12px;color:#5c3d28;">
-            以下 96×96 高清像素贴纸基于分类参考图集（奶龙 / 暴暴龙 / 小七）经复古调色板量化与像素描边生成：
+            以下 96×96 高清像素贴纸基于分类参考图集（奶龙 / 暴暴龙 / 小七 / 小紫兵）经复古调色板量化与像素描边生成：
           </div>
           <div class="sticker-gallery">${cards}</div>
           <button class="pixel-btn" id="modal-close">关闭图鉴</button>
@@ -1222,7 +1246,7 @@ export class GameApp {
             <p>💥 <b>T型 / L型 5连 -> 【肚皮爆炸包】</b>：duang~ 震碎周围 3×3 范围一切障碍！</p>
             <p>🌈 <b>5连一线 -> 【百变彩虹奶龙】</b>：与任意颜色交换，吸走全屏同色棋子！</p>
             <p>⚡ <b>双特效互换大招</b>：把任意两个特效棋子相邻交换（如彩虹+条纹、爆炸+爆炸），触发全屏毁天灭地连环清场！</p>
-            <p>🍮 <b>大肚肚主动技</b>：消除攒满 100% 肚肚能量后，点击左侧奶龙释放【泰山压顶】不耗步炸场并赠送 2 个特效棋子！</p>
+            <p>🍮 <b>大肚肚主动技</b>：消除攒满 100% 肚肚能量后，点击左侧奶龙释放【泰山压顶】不耗步炸场并赠送 1 个特效棋子！</p>
           </div>
           <div style="text-align:center;margin-top:14px;">
             <button class="pixel-btn" id="modal-close">学会啦，开吃！</button>
@@ -1260,9 +1284,11 @@ export class GameApp {
             本局得分: ${this.score}
           </div>
           <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
-            <button class="pixel-btn accent" id="modal-free-continue">
-              🍗 奶龙卖萌续命 (+5步继续!)
-            </button>
+            ${
+              !this.usedContinue
+                ? `<button class="pixel-btn accent" id="modal-free-continue">🍗 奶龙卖萌续命 (+3步 · 仅限1次)</button>`
+                : `<button class="pixel-btn" disabled>🍗 本局续命已用完</button>`
+            }
             <button class="pixel-btn" id="modal-retry">🔄 重新挑战</button>
             <button class="pixel-btn secondary" id="modal-to-map">返回</button>
           </div>
@@ -1290,12 +1316,14 @@ export class GameApp {
       this.renderUI();
     });
     backdrop.querySelector('#modal-free-continue')?.addEventListener('click', () => {
+      if (this.usedContinue) return;
+      this.usedContinue = true;
       this.audio.playBellyBounce();
-      this.movesLeft += 5;
+      this.movesLeft += 3;
       this.activeModal = 'none';
       this.nailongPose = 'pat_belly';
       this.poseTimer = 1.0;
-      this.speechText = '满血复活！再给我 5 步一定吃光它们！';
+      this.speechText = '最后一次卖萌续命！抓住这 3 步绝地翻盘吧！';
       this.renderUI();
     });
   }
@@ -1367,13 +1395,13 @@ export class GameApp {
       }
     }
 
-    // Idle 4-second smart hint detection
+    // Idle 6.5-second smart hint detection
     if (
       this.screen === 'play' &&
       !this.isAnimating &&
       this.activeModal === 'none' &&
       !this.hintPair &&
-      now - this.lastActionTime > 4200
+      now - this.lastActionTime > 6500
     ) {
       this.hintPair = this.engine.getHintMove();
     }

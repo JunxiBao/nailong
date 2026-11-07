@@ -55,6 +55,24 @@
       "opaqueRatio": 0.449
     },
     {
+      "id": "minion_twin",
+      "desc": "小紫兵：双丸头带",
+      "origin": "online-pixelized",
+      "url": "/assets/stickers/minion_twin.png",
+      "width": 96,
+      "height": 96,
+      "opaqueRatio": 0.538
+    },
+    {
+      "id": "minion_one",
+      "desc": "小紫兵：独眼呆萌",
+      "origin": "online-pixelized",
+      "url": "/assets/stickers/minion_one.png",
+      "width": 96,
+      "height": 96,
+      "opaqueRatio": 0.469
+    },
+    {
       "id": "xiaoqi",
       "desc": "天才少年小七",
       "origin": "online-pixelized",

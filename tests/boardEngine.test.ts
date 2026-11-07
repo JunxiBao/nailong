@@ -27,15 +27,20 @@ function setRowColors(engine: BoardEngine, row: number, colors: TileColor[]): vo
 }
 
 describe('High-Detail Pixel Models & Reference Stickers Pipeline', () => {
-  it('generates valid 96x96 retro PNG stickers (including 123.jpeg drooling Nailong) and manifest', () => {
+  it('generates valid 96x96 retro PNG stickers (including 123.jpeg drooling Nailong & remodeled Minions) and manifest', () => {
     const manifestPath = path.resolve('public/assets/stickers/manifest.json');
     expect(fs.existsSync(manifestPath)).toBe(true);
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-    expect(manifest.stickers.length).toBeGreaterThanOrEqual(7);
+    expect(manifest.stickers.length).toBeGreaterThanOrEqual(9);
 
     const happySticker = manifest.stickers.find((s: { id: string }) => s.id === 'nailong_happy');
     expect(happySticker).toBeDefined();
     expect(happySticker.desc).toContain('流口水');
+
+    const minionTwin = manifest.stickers.find((s: { id: string }) => s.id === 'minion_twin');
+    const minionOne = manifest.stickers.find((s: { id: string }) => s.id === 'minion_one');
+    expect(minionTwin).toBeDefined();
+    expect(minionOne).toBeDefined();
 
     for (const sticker of manifest.stickers) {
       const pngPath = path.resolve('public', sticker.url.replace(/^\//, ''));
@@ -193,10 +198,10 @@ describe('BoardEngine Match-3 Core Mechanics', () => {
     expect(swapRes.valid).toBe(true);
     expect(swapRes.steps[0].cratesBroken).toBeGreaterThanOrEqual(1);
 
-    // Belly Slam does not consume a move and spawns 2 bonus specials
+    // Belly Slam does not consume a move and spawns 1 bonus special
     const slamRes = engine.useBellySlam();
     expect(slamRes.valid).toBe(true);
     expect(slamRes.consumedMove).toBe(false);
-    expect(slamRes.steps[0].spawnedSpecials.length).toBe(2);
+    expect(slamRes.steps[0].spawnedSpecials.length).toBe(1);
   });
 });

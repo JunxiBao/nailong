@@ -3,7 +3,7 @@ import { SpecialType, TileColor } from '../match3/types';
 export const COLOR_META: Record<TileColor, { label: string; hex: string; light: string }> = {
   nailong: { label: '奶龙', hex: '#FFD438', light: '#FFF3A1' },
   bombloong: { label: '暴暴龙', hex: '#55C5EE', light: '#C4F0FF' },
-  minion: { label: '小紫兵', hex: '#A86AF0', light: '#E3D0FF' },
+  minion: { label: '小紫兵', hex: '#D87BF2', light: '#F5D0FE' },
   drumstick: { label: '烤鸡腿', hex: '#FF8F3D', light: '#FFD099' },
   strawberry: { label: '红草莓', hex: '#FF4D5E', light: '#FFB3BC' },
   milktea: { label: '波波奶茶', hex: '#52E09B', light: '#BFF8DC' },

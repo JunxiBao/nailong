@@ -107,6 +107,10 @@ const STICKER_PALETTE = [
   // Bombloong blues & ice belly
   [230, 252, 255], [192, 242, 252], [132, 222, 250], [85, 197, 238],
   [52, 154, 204], [32, 106, 152], [22, 62, 102],
+  // Minion (小紫兵) lilac-pink skin, plum shadows, violet cloud puffs, teal headband & yellow sclera
+  [252, 212, 242], [236, 176, 222], [204, 138, 192], [172, 114, 166], [142, 92, 138], [112, 72, 114],
+  [208, 156, 255], [168, 98, 250], [126, 64, 212], [88, 42, 162],
+  [92, 192, 218], [64, 174, 204], [42, 132, 172], [28, 92, 132], [228, 226, 94], [196, 194, 68],
   // Skin, browns, claws, charcoal hair & neutrals
   [255, 224, 198], [235, 190, 160], [148, 104, 72], [96, 68, 44],
   [64, 44, 30], [38, 34, 36], [72, 74, 78], [130, 138, 148],
@@ -196,8 +200,8 @@ function convertRefToSticker96(imgPath, opts = {}) {
     }
   }
 
-  if (opts.removeWhiteBg) {
-    // Flood-fill white background from border to make crisp die-cut character sticker!
+  if (opts.removeWhiteBg || opts.removeCornerBg) {
+    // Flood-fill uniform or vertical-gradient backdrop from border to make crisp die-cut character sticker!
     const visited = new Uint8Array(size * size);
     const queue = [];
     for (let i = 0; i < size; i++) {
@@ -213,7 +217,16 @@ function convertRefToSticker96(imgPath, opts = {}) {
       const r = rawGrid[idx];
       const g = rawGrid[idx + 1];
       const b = rawGrid[idx + 2];
-      if (grid[idx + 3] === 0 || (r > 236 && g > 236 && b > 232)) {
+      const isWhite = opts.removeWhiteBg && r > 236 && g > 236 && b > 232;
+      // Compare against this row's left/right border sample so vertical gradient backdrops vanish 100%!
+      const rowY = Math.min(size - 5, Math.max(4, y));
+      const bL = (rowY * size + 4) * 4;
+      const bR = (rowY * size + (size - 5)) * 4;
+      const distL = Math.hypot(r - rawGrid[bL], g - rawGrid[bL + 1], b - rawGrid[bL + 2]);
+      const distR = Math.hypot(r - rawGrid[bR], g - rawGrid[bR + 1], b - rawGrid[bR + 2]);
+      const tol = opts.bgTolerance ?? 36;
+      const isCornerBg = opts.removeCornerBg && Math.min(distL, distR) < tol;
+      if (grid[idx + 3] === 0 || isWhite || isCornerBg) {
         grid[idx + 3] = 0;
         queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
       }
@@ -1188,44 +1201,148 @@ function buildTile48(kind, alt = false) {
   }
 
   if (kind === 'minion') {
-    const PURPLE_RAMP = [
-      [82, 42, 138],
-      [114, 66, 182],
-      [154, 102, 228],
-      [186, 140, 252],
-      [224, 196, 255],
+    // Faithful to `images/小紫兵/Unknown copy.jpeg` & `Unknown.jpeg`:
+    // - Twin fluffy violet-purple cloud afro buns + top hair peek!
+    // - Sporty cyan-teal "bomb" headband across forehead!
+    // - Pastel lilac-pink mochi face + two big lime-yellow sclera eyes with glossy black pupils!
+    // - Cute straight horizontal pink mouth + blue denim overalls bib with silver buttons!
+    const LILAC_SKIN_RAMP = [
+      [164, 104, 156],
+      [198, 136, 188],
+      [230, 170, 218],
+      [246, 196, 234],
+      [255, 220, 246],
     ];
+    const VIOLET_PUFF_RAMP = [
+      [92, 42, 176],
+      [124, 66, 214],
+      [162, 98, 248],
+      [192, 138, 255],
+      [224, 186, 255],
+    ];
+    const TEAL_BAND_RAMP = [
+      [24, 98, 128],
+      [40, 134, 168],
+      [62, 172, 204],
+      [94, 202, 228],
+      [152, 232, 248],
+    ];
+    const DENIM_OVERALLS_RAMP = [
+      [24, 78, 112],
+      [36, 108, 148],
+      [52, 138, 182],
+      [78, 166, 206],
+      [122, 196, 228],
+    ];
+
+    const evalMinion = (x, y, z) => {
+      // Twin fluffy cloud afro buns on left & right!
+      let dPuffs = 999;
+      for (const side of [-1, 1]) {
+        const p1 = sdSphere(x, y, z, side * 12.6, -10.4, 0.5, 4.5);
+        const p2 = sdSphere(x, y, z, side * 15.0, -6.6, 0.8, 4.3);
+        const p3 = sdSphere(x, y, z, side * 13.6, -2.6, 0.8, 3.8);
+        const p4 = sdSphere(x, y, z, side * 9.8, -11.8, 0.5, 3.8);
+        const puff = smin(smin(p1, p2, 1.8), smin(p3, p4, 1.8), 1.8);
+        dPuffs = Math.min(dPuffs, puff);
+      }
+
+      // Top purple hair crown + cyan headband + wide chubby square-mochi lilac face
+      const dCrown = sdEllipsoid(x, y, z, 0, -8.4, 1.5, 10.6, 5.4, 10.2);
+      const dBand = sdEllipsoid(x, y, z, 0, -5.8, 2.8, 12.6, 4.0, 12.0);
+      const dFaceMid = sdEllipsoid(x, y, z, 0, 1.8, 2.4, 12.2, 8.6, 11.4);
+      const dJawL = sdEllipsoid(x, y, z, -5.2, 5.4, 3.2, 7.6, 5.6, 9.6);
+      const dJawR = sdEllipsoid(x, y, z, 5.2, 5.4, 3.2, 7.6, 5.6, 9.6);
+      const dHead = smin(dCrown, smin(dBand, smin(dFaceMid, smin(dJawL, dJawR, 4.2), 3.8), 1.8), 1.8);
+
+      // Cute chibi upper shoulders + denim overalls bib at bottom!
+      const dTorso = sdEllipsoid(x, y, z, 0, 13.0, 1.8, 9.6, 4.4, 8.6);
+      const dTotal = Math.min(dPuffs, smin(dHead, dTorso, 1.8));
+      return { dTotal, dPuffs, dBand, dCrown, dTorso };
+    };
+
     return renderSdfFrame(
       w,
       h,
       half,
-      (x, y, z) => {
-        const body = sdEllipsoid(x, y, z, 0, 2.5, 1, 13.8, 13.2, 13.5);
-        const stem = sdCapsule(x, y, z, 0, -10, 1, 0, -15, 1, 1.6);
-        const bulb = sdSphere(x, y, z, 0, -16.2, 1, 3.0);
-        const goggle = sdCapsule(x, y, z, -5.5, 0.5, 11, 5.5, 0.5, 11, 4.6);
-        return Math.min(smin(body, stem, 1.5), bulb, goggle);
-      },
+      (x, y, z) => evalMinion(x, y, z).dTotal,
       (wx, wy, wz, _nx, _ny, _nz, shade) => {
-        if (wy < -13.5) return quantizeRamp(Math.max(0.55, shade), NAILONG_YELLOW_RAMP);
-        // Glossy goggle visor!
-        if (wz > 11.5 && Math.abs(wy - 0.5) < 4.5 && Math.abs(wx) < 9.8) {
+        const p = evalMinion(wx, wy, wz);
+
+        // 1. Twin Violet Cloud Afro Puffs!
+        if (p.dPuffs < p.dTotal + 0.25 && Math.abs(wx) > 10.0 && wy < 1.2) {
+          return quantizeRamp(shade, VIOLET_PUFF_RAMP);
+        }
+
+        // 2. Top Violet Hair Crown peeking above headband (with center part line!)
+        const bandTopY = -9.0 + (wx * wx) * 0.014;
+        const bandBotY = -3.0 + (wx * wx) * 0.01;
+        if (wy < bandTopY) {
+          if (Math.abs(wx) < 0.55) return [82, 38, 156];
+          return quantizeRamp(shade, VIOLET_PUFF_RAMP);
+        }
+
+        // 3. Cyan-Teal "bomb" Headband!
+        if (wy >= bandTopY && wy <= bandBotY && Math.abs(wx) < 13.0) {
+          // Tiny cream "bomb" print on upper-left of headband (`Unknown copy.jpeg`!)
+          if (wz > 5 && wx >= -8.4 && wx <= -2.4 && wy >= -7.2 && wy <= -5.4) {
+            const dot = Math.floor((wx + 8.4) * 1.15) % 2 === 0;
+            if (dot) return [245, 250, 232];
+          }
+          return quantizeRamp(shade, TEAL_BAND_RAMP);
+        }
+
+        // 4. Chibi Denim Overalls Bib + 2 Silver Buttons (`wy >= 10.2`)!
+        if (wy >= 10.2) {
+          const onStrapL = wx >= -6.8 && wx <= -4.0 && wy >= 9.8;
+          const onStrapR = wx >= 4.0 && wx <= 6.8 && wy >= 9.8;
+          const onBib = Math.abs(wx) <= 6.6 && wy >= 11.8;
+          if (onStrapL || onStrapR || onBib) {
+            if (
+              wz > 4 &&
+              (Math.hypot(wx + 5.2, wy - 12.2) < 1.35 || Math.hypot(wx - 5.2, wy - 12.2) < 1.35)
+            ) {
+              return [238, 242, 248];
+            }
+            return quantizeRamp(shade, DENIM_OVERALLS_RAMP);
+          }
+          return quantizeRamp(shade * 0.92, LILAC_SKIN_RAMP);
+        }
+
+        // 5. Face Features: Two Big Round Lime-Yellow Sclera Eyes + Straight Pink Mouth!
+        if (wz > 4) {
           for (const side of [-1, 1]) {
-            const d = Math.hypot(wx - side * 4.2, wy - 0.5);
-            if (d < 3.2) {
-              if (Math.hypot(wx - side * 4.2 + 0.9, wy - 0.5 + 0.9) < 0.9) return [255, 255, 255];
-              if (d < 1.6) return [28, 18, 42];
-              return [255, 255, 255];
+            const cx = side * 5.1;
+            const cy = 1.2;
+            const ex = (wx - cx) / 3.7;
+            const ey = (wy - cy) / 3.7;
+            const r2 = ex * ex + ey * ey;
+            if (r2 <= 1.0) {
+              if (alt) {
+                if (Math.abs(wy - cy) < 0.85) return [84, 42, 92];
+                return quantizeRamp(shade, LILAC_SKIN_RAMP);
+              }
+              if (r2 > 0.82) return [96, 56, 108];
+              const pr = Math.hypot((wx - cx) / 2.3, (wy - cy) / 2.3);
+              if (Math.hypot(wx - cx + 0.9, wy - cy + 0.9) < 0.9) return [255, 255, 255];
+              if (pr <= 1.0) return [20, 16, 26];
+              return wy < cy ? [204, 202, 74] : [234, 232, 98];
             }
           }
-          return shade > 0.5 ? [212, 222, 236] : [142, 156, 176];
+
+          // Straight horizontal rose-pink mouth (`Unknown copy.jpeg`!)
+          if (Math.abs(wx) < 3.8 && Math.abs(wy - 6.6) < 0.65) {
+            return [188, 62, 88];
+          }
         }
-        if (wz > 6 && Math.hypot(wx / 2.2, (wy - 7.8) / 1.8) < 1) {
-          return [52, 22, 78];
-        }
-        return quantizeRamp(shade, PURPLE_RAMP);
+
+        let s = shade;
+        if (wy > bandBotY && wy < bandBotY + 1.2) s *= 0.72;
+        if (wy > 9.0 && wy < 10.2) s *= 0.76;
+
+        return quantizeRamp(s, LILAC_SKIN_RAMP);
       },
-      [42, 20, 68]
+      [46, 24, 68]
     );
   }
 
@@ -1420,6 +1537,18 @@ function main() {
       src: 'images/暴暴龙/images copy 3.jpeg',
       desc: '暴暴龙：蛋壳恶龙',
       opts: { removeWhiteBg: true },
+    },
+    {
+      id: 'minion_twin',
+      src: 'images/小紫兵/Unknown copy.jpeg',
+      desc: '小紫兵：双丸头带',
+      opts: { removeCornerBg: true, bgTolerance: 38 },
+    },
+    {
+      id: 'minion_one',
+      src: 'images/小紫兵/Unknown.jpeg',
+      desc: '小紫兵：独眼呆萌',
+      opts: { removeCornerBg: true, bgTolerance: 38 },
     },
     {
       id: 'xiaoqi',
