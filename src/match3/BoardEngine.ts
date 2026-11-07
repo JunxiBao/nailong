@@ -504,7 +504,7 @@ export class BoardEngine {
       }
     }
     candidates.sort((x, y) => y.priority - x.priority);
-    const chosen = candidates.slice(0, Math.min(5, candidates.length)).map((c) => c.pos);
+    const chosen = candidates.slice(0, Math.min(6, candidates.length)).map((c) => c.pos);
 
     step.blasts.push({
       kind: 'belly_slam',
@@ -520,7 +520,7 @@ export class BoardEngine {
     this.drainBlastQueue(blastQueue, triggered, step);
     step.falls = this.applyGravityAndRefill();
 
-    // Gift 1 random normal tile with special power ('line_h', 'line_v', or 'bomb')!
+    // Gift 2 random normal tiles with special power ('line_h', 'line_v', or 'bomb')!
     const normalPositions: Coord[] = [];
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
@@ -530,7 +530,7 @@ export class BoardEngine {
         }
       }
     }
-    for (let k = 0; k < 1 && normalPositions.length > 0; k++) {
+    for (let k = 0; k < 2 && normalPositions.length > 0; k++) {
       const idx = Math.floor(this.rng() * normalPositions.length);
       const p = normalPositions.splice(idx, 1)[0];
       const tile = this.grid[p.row][p.col].tile!;
@@ -835,8 +835,8 @@ export class BoardEngine {
     // 5. Compute score, Nailong belly energy, and Boss damage with combo multiplier!
     const mult = 1 + (comboIndex - 1) * 0.35;
     step.scoreDelta += Math.round(step.cleared.length * 30 * mult);
-    step.bellyEnergyDelta = Math.min(26, Math.round(step.cleared.length * 2.0 + step.blasts.length * 5));
-    step.bossDamageDelta = Math.round((step.cleared.length * 10 + step.blasts.length * 25) * mult);
+    step.bellyEnergyDelta = Math.min(30, Math.round(step.cleared.length * 2.4 + step.blasts.length * 6));
+    step.bossDamageDelta = Math.round((step.cleared.length * 11 + step.blasts.length * 28) * mult);
 
     // 6. Gravity & top refill
     step.falls = this.applyGravityAndRefill();

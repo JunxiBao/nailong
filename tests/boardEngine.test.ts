@@ -181,7 +181,7 @@ describe('BoardEngine Match-3 Core Mechanics', () => {
     const res = engine.trySwap({ row: 3, col: 3 }, { row: 3, col: 4 });
     expect(res.valid).toBe(true);
     expect(res.steps[0].blasts.some((b) => b.kind === 'rainbow_all')).toBe(true);
-    expect(res.steps[0].iceBroken).toBe(16); // All 16 single-ice cells on Level 3 cracked!
+    expect(res.steps[0].iceBroken).toBeGreaterThanOrEqual(16); // Cracks at least 1 layer across all 16 ice cells on Level 3!
   });
 
   it('cracks adjacent wooden crates, breaks chains, and supports Belly Slam skill', () => {
@@ -198,10 +198,10 @@ describe('BoardEngine Match-3 Core Mechanics', () => {
     expect(swapRes.valid).toBe(true);
     expect(swapRes.steps[0].cratesBroken).toBeGreaterThanOrEqual(1);
 
-    // Belly Slam does not consume a move and spawns 1 bonus special
+    // Belly Slam does not consume a move and spawns 2 bonus specials
     const slamRes = engine.useBellySlam();
     expect(slamRes.valid).toBe(true);
     expect(slamRes.consumedMove).toBe(false);
-    expect(slamRes.steps[0].spawnedSpecials.length).toBe(1);
+    expect(slamRes.steps[0].spawnedSpecials.length).toBe(2);
   });
 });

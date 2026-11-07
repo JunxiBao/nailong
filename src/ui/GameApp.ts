@@ -96,8 +96,8 @@ export class GameApp {
   // Gameplay state
   private currentLevel: LevelConfig = CAMPAIGN_LEVELS[0];
   private isEndless = false;
-  private endlessNextMilestone = 3500;
-  private endlessStepGap = 3500;
+  private endlessNextMilestone = 3000;
+  private endlessStepGap = 3000;
   private endlessTier = 0;
   private usedContinue = false;
   private engine!: BoardEngine;
@@ -201,8 +201,8 @@ export class GameApp {
     this.audio.unlock();
     this.currentLevel = level;
     this.isEndless = endless;
-    this.endlessNextMilestone = 3500;
-    this.endlessStepGap = 3500;
+    this.endlessNextMilestone = 3000;
+    this.endlessStepGap = 3000;
     this.endlessTier = 0;
     this.usedContinue = false;
     this.engine = new BoardEngine(level);
@@ -211,7 +211,7 @@ export class GameApp {
     this.score = 0;
     this.movesLeft = level.moves;
     this.movesUsed = 0;
-    this.bellyEnergy = 0;
+    this.bellyEnergy = 15;
     this.bossHp = level.bossMaxHp ?? 0;
     this.bossHurtTimer = 0;
     this.bossAttackTimer = 0;
@@ -452,7 +452,7 @@ export class GameApp {
                 <span class="palette-preview" title="本关棋盘可消除元素表">
                   ${
                     this.isEndless
-                      ? `<span id="hud-endless-target" style="font-size:11px;color:#b45309;">下一档:${this.endlessNextMilestone}分(+3步)</span>`
+                      ? `<span id="hud-endless-target" style="font-size:11px;color:#b45309;">下一档:${this.endlessNextMilestone}分(+4步)</span>`
                       : this.buildPalettePreviewHtml()
                   }
                 </span>
@@ -629,7 +629,7 @@ export class GameApp {
 
     const endlessTargetEl = document.getElementById('hud-endless-target');
     if (endlessTargetEl && this.isEndless) {
-      endlessTargetEl.textContent = `下一档:${this.endlessNextMilestone}分(+3步)`;
+      endlessTargetEl.textContent = `下一档:${this.endlessNextMilestone}分(+4步)`;
     }
 
     const speechEl = document.getElementById('hud-speech');
@@ -1081,15 +1081,15 @@ export class GameApp {
     if (this.isEndless) {
       while (this.score >= this.endlessNextMilestone) {
         this.endlessTier++;
-        this.movesLeft += 3;
-        this.endlessStepGap += 700;
+        this.movesLeft += 4;
+        this.endlessStepGap += 450;
         this.endlessNextMilestone += this.endlessStepGap;
         const gotHammer = this.endlessTier % 2 === 0;
         if (gotHammer) {
           this.progress.boosters.hammer++;
         }
         this.audio.playVictory();
-        this.speechText = `干饭突破第 ${this.endlessTier} 档里程碑！奖励 +3 步${gotHammer ? '与小七木槌' : ''}！`;
+        this.speechText = `干饭突破第 ${this.endlessTier} 档里程碑！奖励 +4 步${gotHammer ? '与小七木槌' : ''}！`;
       }
       if (this.score > this.progress.endlessBestScore) {
         this.progress.endlessBestScore = this.score;
@@ -1146,8 +1146,7 @@ export class GameApp {
       this.movesLeft > 0 &&
       this.movesUsed % (this.currentLevel.bossAttackInterval ?? 3) === 0
     ) {
-      const sabotageCount = (this.currentLevel.bossMaxHp ?? 0) >= 1600 ? 3 : 2;
-      const sabotaged = this.engine.triggerBossSabotage(sabotageCount);
+      const sabotaged = this.engine.triggerBossSabotage(2);
       this.renderGrid = this.engine.cloneGrid();
       if (sabotaged.length > 0) {
         this.bossAttackTimer = 1.2;
@@ -1246,7 +1245,7 @@ export class GameApp {
             <p>💥 <b>T型 / L型 5连 -> 【肚皮爆炸包】</b>：duang~ 震碎周围 3×3 范围一切障碍！</p>
             <p>🌈 <b>5连一线 -> 【百变彩虹奶龙】</b>：与任意颜色交换，吸走全屏同色棋子！</p>
             <p>⚡ <b>双特效互换大招</b>：把任意两个特效棋子相邻交换（如彩虹+条纹、爆炸+爆炸），触发全屏毁天灭地连环清场！</p>
-            <p>🍮 <b>大肚肚主动技</b>：消除攒满 100% 肚肚能量后，点击左侧奶龙释放【泰山压顶】不耗步炸场并赠送 1 个特效棋子！</p>
+            <p>🍮 <b>大肚肚主动技</b>：消除攒满 100% 肚肚能量后，点击左侧奶龙释放【泰山压顶】不耗步炸场并赠送 2 个特效棋子！</p>
           </div>
           <div style="text-align:center;margin-top:14px;">
             <button class="pixel-btn" id="modal-close">学会啦，开吃！</button>
@@ -1286,7 +1285,7 @@ export class GameApp {
           <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
             ${
               !this.usedContinue
-                ? `<button class="pixel-btn accent" id="modal-free-continue">🍗 奶龙卖萌续命 (+3步 · 仅限1次)</button>`
+                ? `<button class="pixel-btn accent" id="modal-free-continue">🍗 奶龙卖萌续命 (+5步 · 仅限1次)</button>`
                 : `<button class="pixel-btn" disabled>🍗 本局续命已用完</button>`
             }
             <button class="pixel-btn" id="modal-retry">🔄 重新挑战</button>
@@ -1319,11 +1318,11 @@ export class GameApp {
       if (this.usedContinue) return;
       this.usedContinue = true;
       this.audio.playBellyBounce();
-      this.movesLeft += 3;
+      this.movesLeft += 5;
       this.activeModal = 'none';
       this.nailongPose = 'pat_belly';
       this.poseTimer = 1.0;
-      this.speechText = '最后一次卖萌续命！抓住这 3 步绝地翻盘吧！';
+      this.speechText = '最后一次卖萌续命！抓住这 5 步一鼓作气过关吧！';
       this.renderUI();
     });
   }
@@ -1395,13 +1394,13 @@ export class GameApp {
       }
     }
 
-    // Idle 6.5-second smart hint detection
+    // Idle 5-second smart hint detection
     if (
       this.screen === 'play' &&
       !this.isAnimating &&
       this.activeModal === 'none' &&
       !this.hintPair &&
-      now - this.lastActionTime > 6500
+      now - this.lastActionTime > 5000
     ) {
       this.hintPair = this.engine.getHintMove();
     }
