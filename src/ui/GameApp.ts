@@ -81,6 +81,7 @@ const CELL_PX = 64;
 const BOARD_PX = CELL_PX * 8; // 512x512 crisp high-detail pixel grid
 
 const NAILONG_QUIPS = [
+  '我是奶龙，我才是奶龙！',
   '我的大肚肚真的很酷酷~ duang!',
   '啊呜！再多消几个烤鸡腿嘛！',
   '4连能喷火，5连变彩虹奶龙哦！',
@@ -181,6 +182,17 @@ export class GameApp {
     window.addEventListener('pointerup', () => {
       this.dragStartCell = null;
       this.dragStartPt = null;
+    });
+
+    // Delegated click handler so any Nailong sticker / icon marked with data-nailong-voice plays Nailong's voice clip
+    this.root.addEventListener('click', (ev) => {
+      const target = ev.target as HTMLElement | null;
+      if (target?.closest('[data-nailong-voice]')) {
+        this.audio.unlock();
+        this.audio.playNailongVoice();
+        this.nailongPose = 'pat_belly';
+        this.poseTimer = 1.45;
+      }
     });
 
     this.loadStickerManifest();
@@ -323,17 +335,17 @@ export class GameApp {
         <div class="title-sub">大肚肚美食派对 · 收集烤鸡腿 · 弹飞暴暴龙！</div>
 
         <div class="title-hero-row">
-          <div class="hero-sticker-card" title="基于 123.jpeg 像素化的奶龙流口水贴纸">
+          <div class="hero-sticker-card" data-nailong-voice="1" style="cursor:pointer;" title="点击听奶龙原声！">
             <img class="pixel-img" src="${happyUrl}" width="96" height="96" alt="奶龙流口水像素贴纸" />
             <div style="font-size:11px;font-weight:800;margin-top:4px;">馋得流口水</div>
           </div>
 
-          <div id="title-mascot-box" style="cursor:pointer;" title="戳戳奶龙的大肚皮！">
+          <div id="title-mascot-box" style="cursor:pointer;" title="点击奶龙播放原声语音！">
             <canvas id="title-mascot" width="192" height="192"></canvas>
-            <div style="font-size:12px;font-weight:900;color:#b45309;">▲ 点我duang~duang大肚皮 ▲</div>
+            <div style="font-size:12px;font-weight:900;color:#b45309;">▲ 点我听：“我是奶龙！” ▲</div>
           </div>
 
-          <div class="hero-sticker-card right" title="基于参考图集像素化的奶龙全身贴纸">
+          <div class="hero-sticker-card right" data-nailong-voice="1" style="cursor:pointer;" title="点击听奶龙原声！">
             <img class="pixel-img" src="${bellyUrl}" width="96" height="96" alt="奶龙歪头秀大肚肚贴纸" />
             <div style="font-size:11px;font-weight:800;margin-top:4px;">歪头秀大肚肚</div>
           </div>
@@ -367,9 +379,9 @@ export class GameApp {
     this.titleMascotCanvas = document.getElementById('title-mascot') as HTMLCanvasElement;
     document.getElementById('title-mascot-box')?.addEventListener('click', () => {
       this.audio.unlock();
-      this.audio.playBellyBounce();
+      this.audio.playNailongVoice();
       this.nailongPose = 'pat_belly';
-      this.poseTimer = 1.1;
+      this.poseTimer = 1.45;
     });
     document.getElementById('btn-start-map')?.addEventListener('click', () => {
       this.audio.unlock();
@@ -663,10 +675,10 @@ export class GameApp {
   private buildPalettePreviewHtml(): string {
     if (!this.engine) return '';
     return this.engine.palette
-      .map(
-        (color) =>
-          `<img class="pixel-img palette-mini-icon" src="/assets/models/tile_${color}.png" alt="${COLOR_META[color].label}" title="可消除：${COLOR_META[color].label}" />`
-      )
+      .map((color) => {
+        const voiceAttr = color === 'nailong' ? 'data-nailong-voice="1" style="cursor:pointer;"' : '';
+        return `<img class="pixel-img palette-mini-icon" ${voiceAttr} src="/assets/models/tile_${color}.png" alt="${COLOR_META[color].label}" title="可消除：${COLOR_META[color].label}" />`;
+      })
       .join('');
   }
 
@@ -699,7 +711,8 @@ export class GameApp {
         let icon = '⭐';
         let label = '';
         if (g.type === 'collect' && g.color) {
-          icon = `<img class="pixel-img goal-tile-icon" src="/assets/models/tile_${g.color}.png" alt="${COLOR_META[g.color].label}" />`;
+          const voiceAttr = g.color === 'nailong' ? 'data-nailong-voice="1" style="cursor:pointer;"' : '';
+          icon = `<img class="pixel-img goal-tile-icon" ${voiceAttr} src="/assets/models/tile_${g.color}.png" alt="${COLOR_META[g.color].label}" />`;
           label = COLOR_META[g.color].label;
         } else if (g.type === 'ice') {
           icon = '🧊';
@@ -803,20 +816,21 @@ export class GameApp {
     });
 
     const triggerBellySkill = () => {
-      if (this.isAnimating) return;
       this.audio.unlock();
+      this.audio.playNailongVoice();
+      if (this.isAnimating) return;
       if (this.bellyEnergy >= 100) {
         this.executeBellySlamSkill();
       } else {
-        this.audio.playBellyBounce();
         this.nailongPose = 'pat_belly';
-        this.poseTimer = 0.9;
+        this.poseTimer = 1.45;
         this.speechText = NAILONG_QUIPS[Math.floor(Math.random() * NAILONG_QUIPS.length)];
         this.updateHudDom();
       }
     };
 
     document.getElementById('mascot-click-zone')?.addEventListener('click', triggerBellySkill);
+    document.getElementById('hud-speech')?.addEventListener('click', triggerBellySkill);
     document.getElementById('btn-belly-slam')?.addEventListener('click', triggerBellySkill);
 
     // Xiao Qi helper & Boosters
@@ -894,13 +908,21 @@ export class GameApp {
 
     canvas.addEventListener('pointerdown', (ev) => {
       ev.preventDefault();
-      if (this.isAnimating || this.activeModal !== 'none') return;
+      if (this.activeModal !== 'none') return;
       this.audio.unlock();
-      this.lastActionTime = performance.now();
-      this.hintPair = null;
 
       const cell = getCellFromEvent(ev);
-      if (!cell) return;
+      const clickedNailong =
+        !!cell &&
+        (this.renderGrid[cell.row]?.[cell.col]?.tile?.color === 'nailong' ||
+          this.renderGrid[cell.row]?.[cell.col]?.tile?.special === 'rainbow');
+      if (clickedNailong) {
+        this.audio.playNailongVoice();
+      }
+
+      if (this.isAnimating || !cell) return;
+      this.lastActionTime = performance.now();
+      this.hintPair = null;
 
       if (this.activeBooster === 'hammer') {
         this.executeHammerBooster(cell);
@@ -921,7 +943,9 @@ export class GameApp {
         this.dragStartCell = null;
         this.handlePlayerSwapAttempt(from, cell);
       } else {
-        this.audio.playSelect();
+        if (!clickedNailong) {
+          this.audio.playSelect();
+        }
         this.selectedCell = cell;
       }
     });
@@ -1351,17 +1375,19 @@ export class GameApp {
 
     if (this.activeModal === 'stickers') {
       const cards = this.stickers
-        .map(
-          (s) => `
-          <div class="sticker-item">
+        .map((s) => {
+          const isNailong = s.id.startsWith('nailong_');
+          const voiceAttr = isNailong ? 'data-nailong-voice="1" style="cursor:pointer;" title="点击听奶龙原声！"' : '';
+          return `
+          <div class="sticker-item" ${voiceAttr}>
             <img class="pixel-img" src="${s.url}" width="96" height="96" alt="${s.desc}" />
-            <div style="font-weight:900;font-size:12px;">${s.desc}</div>
+            <div style="font-weight:900;font-size:12px;">${s.desc}${isNailong ? ' 🔊' : ''}</div>
             <div style="font-size:10px;color:#64748b;">
               ${s.origin === 'online-pixelized' ? '🖼️ 参考原图像素化' : '🎨 像素精绘角色'}
             </div>
           </div>
-        `
-        )
+        `;
+        })
         .join('');
 
       backdrop.innerHTML = `
@@ -1473,7 +1499,7 @@ export class GameApp {
       const nextLv = CAMPAIGN_LEVELS.find((l) => l.id === this.currentLevel.id + 1);
       backdrop.innerHTML = `
         <div class="pixel-box modal-card">
-          <img class="pixel-img" src="${this.getStickerUrl('nailong_happy')}" width="96" height="96" alt="win" />
+          <img class="pixel-img" data-nailong-voice="1" style="cursor:pointer;" title="点击奶龙播放原声！" src="${this.getStickerUrl('nailong_happy')}" width="96" height="96" alt="win" />
           <h2 style="margin:8px 0 4px;color:#d97706;">🎉 闯关大成功！肚肚吃饱啦！</h2>
           <div style="font-size:34px;color:#f59e0b;text-shadow:2px 2px 0 #2b1e16;margin:6px 0;">
             ${starsStr}
@@ -1500,7 +1526,7 @@ export class GameApp {
 
       backdrop.innerHTML = `
         <div class="pixel-box modal-card">
-          <img class="pixel-img" src="${this.getStickerUrl('nailong_eat')}" width="84" height="84" alt="hungry" />
+          <img class="pixel-img" data-nailong-voice="1" style="cursor:pointer;" title="点击奶龙播放原声！" src="${this.getStickerUrl('nailong_eat')}" width="84" height="84" alt="hungry" />
           <h2 style="margin:6px 0 4px;color:#dc2626;">
             ${this.isEndless ? '🍗 无尽挑战步数耗尽！' : '🥺 步数用完啦，肚肚还没吃饱...'}
           </h2>
@@ -1580,12 +1606,13 @@ export class GameApp {
     backdrop.querySelector('#modal-free-continue')?.addEventListener('click', () => {
       if (this.usedContinue) return;
       this.usedContinue = true;
-      this.audio.playBellyBounce();
+      this.audio.unlock();
+      this.audio.playNailongVoice();
       this.movesLeft += 5;
       this.activeModal = 'none';
       this.nailongPose = 'pat_belly';
-      this.poseTimer = 1.0;
-      this.speechText = '最后一次卖萌续命！抓住这 5 步一鼓作气过关吧！';
+      this.poseTimer = 1.45;
+      this.speechText = '“我是奶龙，我才是奶龙！”抓住这 5 步一鼓作气过关吧！';
       this.renderUI();
     });
     backdrop.querySelector('#modal-open-lb')?.addEventListener('click', () => {

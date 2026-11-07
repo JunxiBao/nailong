@@ -12,6 +12,10 @@ dist/
 # Legacy scratch downloads (root /assets only, keep src/assets & public/assets!)
 /assets/
 
+# Raw reference video in project root (extracted audio lives in public/assets/audio/)
+/*.mov
+/*.mp4
+
 # macOS & Editor files
 .DS_Store
 *.log

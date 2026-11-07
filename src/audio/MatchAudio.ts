@@ -11,6 +11,8 @@ const COMBO_SCALE_HZ = [
   1318.51, // E6
 ];
 
+const NAILONG_VOICE_URL = '/assets/audio/nailong_voice.mp3';
+
 export class MatchAudio {
   private ctx: AudioContext | null = null;
   public muted = false;
@@ -18,16 +20,98 @@ export class MatchAudio {
   private bgmTimer: number | null = null;
   private bgmStep = 0;
 
+  // Custom Nailong voice clip ("我是奶龙，我才是奶龙") state
+  private voiceRawBytes: ArrayBuffer | null = null;
+  private voiceBuffer: AudioBuffer | null = null;
+  private isDecodingVoice = false;
+  private activeVoiceSource: AudioBufferSourceNode | null = null;
+  private fallbackVoiceEl: HTMLAudioElement | null = null;
+  private voiceDuckUntil = 0;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.preloadNailongVoice();
+    }
+  }
+
+  private preloadNailongVoice(): void {
+    try {
+      const el = new Audio(NAILONG_VOICE_URL);
+      el.preload = 'auto';
+      el.setAttribute('playsinline', 'true');
+      this.fallbackVoiceEl = el;
+    } catch {
+      // ignore in non-DOM test environments
+    }
+
+    if (typeof fetch !== 'undefined') {
+      fetch(NAILONG_VOICE_URL)
+        .then((res) => (res.ok ? res.arrayBuffer() : null))
+        .then((buf) => {
+          if (!buf) return;
+          this.voiceRawBytes = buf;
+          if (this.ctx) {
+            this.decodeVoiceBuffer(this.ctx);
+          }
+        })
+        .catch(() => {
+          // ignore network errors in headless tests
+        });
+    }
+  }
+
+  private decodeVoiceBuffer(ctx: AudioContext): void {
+    if (this.voiceBuffer || this.isDecodingVoice || !this.voiceRawBytes) return;
+    this.isDecodingVoice = true;
+    const copy = this.voiceRawBytes.slice(0);
+    ctx
+      .decodeAudioData(copy)
+      .then((decoded) => {
+        this.voiceBuffer = decoded;
+        this.isDecodingVoice = false;
+      })
+      .catch(() => {
+        this.isDecodingVoice = false;
+      });
+  }
+
+  private stopActiveVoice(): void {
+    if (this.activeVoiceSource) {
+      try {
+        this.activeVoiceSource.stop();
+        this.activeVoiceSource.disconnect();
+      } catch {
+        // already stopped
+      }
+      this.activeVoiceSource = null;
+    }
+    if (this.fallbackVoiceEl && !this.fallbackVoiceEl.paused) {
+      try {
+        this.fallbackVoiceEl.pause();
+        if (this.fallbackVoiceEl.readyState > 0) {
+          this.fallbackVoiceEl.currentTime = 0;
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   private ensureContext(): AudioContext | null {
     if (this.muted) return null;
     if (!this.ctx && typeof window !== 'undefined') {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
+    if (this.ctx) {
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+      this.decodeVoiceBuffer(this.ctx);
     }
     return this.ctx;
   }
@@ -42,6 +126,7 @@ export class MatchAudio {
   public toggleMute(): boolean {
     this.muted = !this.muted;
     if (this.muted) {
+      this.stopActiveVoice();
       this.stopBgmLoop();
     } else if (this.bgmEnabled) {
       this.startBgmLoop();
@@ -57,6 +142,46 @@ export class MatchAudio {
       this.stopBgmLoop();
     }
     return this.bgmEnabled;
+  }
+
+  /**
+   * Plays the extracted audio from the user's root video ("我是奶龙，我才是奶龙")
+   * with zero latency via Web Audio API + synchronous HTMLAudioElement fallback for first-tap iOS/WeChat!
+   */
+  public playNailongVoice(): void {
+    if (this.muted) return;
+    const ctx = this.ensureContext();
+    this.stopActiveVoice();
+    this.voiceDuckUntil = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + 1550;
+
+    if (ctx && this.voiceBuffer && ctx.state === 'running') {
+      const src = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      src.buffer = this.voiceBuffer;
+      gain.gain.value = 1.15;
+      src.connect(gain);
+      gain.connect(ctx.destination);
+      src.onended = () => {
+        if (this.activeVoiceSource === src) {
+          this.activeVoiceSource = null;
+        }
+      };
+      this.activeVoiceSource = src;
+      src.start(0);
+      return;
+    }
+
+    if (this.fallbackVoiceEl) {
+      this.fallbackVoiceEl.volume = 1.0;
+      try {
+        if (this.fallbackVoiceEl.readyState > 0) {
+          this.fallbackVoiceEl.currentTime = 0;
+        }
+      } catch {
+        // ignore if metadata not yet loaded
+      }
+      this.fallbackVoiceEl.play().catch(() => {});
+    }
   }
 
   private playTone(
@@ -179,13 +304,15 @@ export class MatchAudio {
 
   private startBgmLoop(): void {
     this.stopBgmLoop();
-    // Gentle cheerful 8-bit candy melody (quiet so SFX shine!)
+    // Gentle cheerful 8-bit candy melody (ducks automatically while Nailong voice clip plays!)
     const melody = [
       523.25, 659.25, 783.99, 659.25, 880.0, 783.99, 659.25, 587.33,
       523.25, 587.33, 659.25, 783.99, 659.25, 587.33, 523.25, 0,
     ];
     this.bgmTimer = window.setInterval(() => {
       if (this.muted || !this.bgmEnabled) return;
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (now < this.voiceDuckUntil) return;
       const ctx = this.ctx;
       if (!ctx || ctx.state !== 'running') return;
       const freq = melody[this.bgmStep % melody.length];
