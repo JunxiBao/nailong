@@ -304,6 +304,14 @@ export class GameApp {
     this.xiaoqiCanvas = null;
     this.boardCanvas = null;
 
+    if (typeof document !== 'undefined' && document.body) {
+      const chapId =
+        this.screen === 'title' || (this.screen === 'play' && this.isEndless)
+          ? 1
+          : Math.min(3, Math.max(1, this.selectedChapter));
+      document.body.className = `theme-chap-${chapId}`;
+    }
+
     if (this.screen === 'title') {
       this.renderTitleScreen();
     } else if (this.screen === 'map') {
@@ -468,7 +476,7 @@ export class GameApp {
           ${chapterTabsHtml}
         </div>
 
-        <div class="vine-map-grid" style="background: ${activeChap.bgGradient};">
+        <div class="vine-map-grid" style="background-image: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.10)), url('${activeChap.bgImage}'); background-size: cover; background-position: center bottom; image-rendering: pixelated;">
           ${nodesHtml}
         </div>
 
@@ -577,7 +585,10 @@ export class GameApp {
                   <canvas id="boss-canvas" width="88" height="88"></canvas>
                   <div style="flex:1;text-align:left;min-width:0;">
                     <div class="boss-label-row">
-                      <span>👾 暴暴龙</span>
+                      <span style="display:inline-flex;align-items:center;gap:4px;">
+                        <img class="pixel-img goal-tile-icon" src="/assets/models/tile_bombloong.png" alt="暴暴龙" />
+                        <span>暴暴龙</span>
+                      </span>
                       <span id="hud-boss-hp">${Math.max(0, this.bossHp)}/${this.currentLevel.bossMaxHp}</span>
                     </div>
                     <div class="boss-hp-track">
@@ -718,7 +729,7 @@ export class GameApp {
           icon = '⛓️';
           label = '锁链';
         } else if (g.type === 'boss') {
-          icon = '👾';
+          icon = `<img class="pixel-img goal-tile-icon" src="/assets/models/tile_bombloong.png" alt="暴暴龙" />`;
           label = '暴暴龙';
         }
         return `
@@ -1885,10 +1896,21 @@ export class GameApp {
         const y = r * CELL_PX;
         const isEven = (r + c) % 2 === 0;
 
-        // Warm biscuit checkerboard cell
-        ctx.fillStyle = isEven ? '#FFFBEB' : '#FEF3C7';
-        ctx.fillRect(x + 1, y + 1, CELL_PX - 2, CELL_PX - 2);
-        ctx.strokeStyle = '#E5C687';
+        // Chapter-themed checkerboard cell
+        const chapTheme = this.isEndless ? 1 : Math.min(3, Math.max(1, this.selectedChapter));
+        if (chapTheme === 2) {
+          ctx.fillStyle = isEven ? '#FFF1F2' : '#E0F2FE';
+          ctx.fillRect(x + 1, y + 1, CELL_PX - 2, CELL_PX - 2);
+          ctx.strokeStyle = '#93C5FD';
+        } else if (chapTheme === 3) {
+          ctx.fillStyle = isEven ? '#FAF5FF' : '#EDE9FE';
+          ctx.fillRect(x + 1, y + 1, CELL_PX - 2, CELL_PX - 2);
+          ctx.strokeStyle = '#C084FC';
+        } else {
+          ctx.fillStyle = isEven ? '#FFFBEB' : '#FEF3C7';
+          ctx.fillRect(x + 1, y + 1, CELL_PX - 2, CELL_PX - 2);
+          ctx.strokeStyle = '#E5C687';
+        }
         ctx.lineWidth = 2;
         ctx.strokeRect(x + 2, y + 2, CELL_PX - 4, CELL_PX - 4);
 

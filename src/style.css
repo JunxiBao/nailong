@@ -34,11 +34,28 @@ body {
   touch-action: manipulation;
   font-family: 'Courier New', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', monospace;
   background:
-    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.75) 0 42px, transparent 43px),
-    radial-gradient(circle at 23% 17%, rgba(255, 255, 255, 0.75) 0 30px, transparent 31px),
-    radial-gradient(circle at 82% 20%, rgba(255, 255, 255, 0.7) 0 46px, transparent 47px),
+    url('/assets/models/bg_chapter_1.png') center bottom / cover no-repeat,
     linear-gradient(180deg, #67c6f7 0%, #bfe9ff 58%, #a3e635 58.5%, #65a30d 100%);
+  image-rendering: pixelated;
   color: var(--outline-dark);
+}
+
+body.theme-chap-1 {
+  background:
+    url('/assets/models/bg_chapter_1.png') center bottom / cover no-repeat,
+    linear-gradient(180deg, #67c6f7 0%, #bfe9ff 58%, #a3e635 58.5%, #65a30d 100%);
+}
+
+body.theme-chap-2 {
+  background:
+    url('/assets/models/bg_chapter_2.png') center bottom / cover no-repeat,
+    linear-gradient(180deg, #bae6fd 0%, #fce7f3 58%, #7dd3fc 100%);
+}
+
+body.theme-chap-3 {
+  background:
+    url('/assets/models/bg_chapter_3.png') center bottom / cover no-repeat,
+    linear-gradient(180deg, #26124e 0%, #4c1d95 58%, #31244e 100%);
 }
 
 canvas,

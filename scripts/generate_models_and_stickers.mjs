@@ -1634,8 +1634,229 @@ function main() {
     encodePngRGBA(tileStrip.width, tileStrip.height, tileStrip.rgba)
   );
 
+  console.log('4) Painting 320x200 16-bit Pixel Scenic Backgrounds for Chapters 1, 2, and 3...');
+  for (const chapId of [1, 2, 3]) {
+    const bgRgba = buildChapterBackground(chapId);
+    fs.writeFileSync(
+      path.join(MODEL_OUT_DIR, `bg_chapter_${chapId}.png`),
+      encodePngRGBA(320, 200, bgRgba)
+    );
+  }
+
   fs.rmSync(TMP_DIR, { recursive: true, force: true });
   console.log('All high-precision 3D SDF pixel models & stickers built successfully!');
+}
+
+function buildChapterBackground(chapId) {
+  const W = 320;
+  const H = 200;
+  const rgba = new Uint8Array(W * H * 4);
+  const setPx = (x, y, r, g, b) => {
+    const ix = Math.round(x);
+    const iy = Math.round(y);
+    if (ix < 0 || ix >= W || iy < 0 || iy >= H) return;
+    const o = (iy * W + ix) * 4;
+    rgba[o] = r;
+    rgba[o + 1] = g;
+    rgba[o + 2] = b;
+    rgba[o + 3] = 255;
+  };
+  const fillCircle = (cx, cy, rad, r, g, b) => {
+    const r2 = rad * rad;
+    for (let dy = -Math.ceil(rad); dy <= Math.ceil(rad); dy++) {
+      for (let dx = -Math.ceil(rad); dx <= Math.ceil(rad); dx++) {
+        if (dx * dx + dy * dy <= r2) setPx(cx + dx, cy + dy, r, g, b);
+      }
+    }
+  };
+  const fillRect = (x0, y0, w, h, r, g, b) => {
+    for (let y = y0; y < y0 + h; y++) {
+      for (let x = x0; x < x0 + w; x++) setPx(x, y, r, g, b);
+    }
+  };
+
+  if (chapId === 1) {
+    // 🌴 Chapter 1: Sunny Picnic Island (阳光野餐岛)
+    for (let y = 0; y < H; y++) {
+      const t = y / H;
+      for (let x = 0; x < W; x++) {
+        if (y < 105) {
+          // Sunny sky gradient
+          const st = y / 105;
+          setPx(x, y, Math.round(72 + st * 115), Math.round(188 + st * 52), Math.round(250 + st * 5));
+        } else if (y < 126) {
+          // Turquoise tropical ocean
+          const ot = (y - 105) / 21;
+          const wave = ((x + y * 3) % 14 < 4) ? 18 : 0;
+          setPx(x, y, Math.round(20 + ot * 30 + wave), Math.round(184 + ot * 35 + wave), Math.round(216 + wave));
+        } else {
+          // Rolling green picnic meadow + sandy shore
+          const hill = Math.sin(x * 0.028) * 7 + Math.cos(x * 0.06) * 3;
+          if (y < 134 + hill * 0.5) {
+            setPx(x, y, 253, 230, 138); // Golden sand beach
+          } else {
+            const gt = (y - 134) / 66;
+            const checker = (((x >> 3) + (y >> 3)) & 1) * 8;
+            setPx(x, y, Math.round(132 - gt * 34 + checker), Math.round(218 - gt * 28 + checker), Math.round(52 - gt * 14));
+          }
+        }
+      }
+    }
+    // Golden pixel sun with warm halo
+    fillCircle(266, 34, 22, 254, 240, 138);
+    fillCircle(266, 34, 16, 250, 204, 21);
+    fillCircle(266, 34, 11, 255, 251, 235);
+    // Fluffy pixel clouds
+    for (const [cx, cy, s] of [[58, 28, 1], [150, 42, 0.85], [225, 24, 0.75]]) {
+      fillCircle(cx, cy, 14 * s, 255, 255, 255);
+      fillCircle(cx - 12 * s, cy + 4 * s, 10 * s, 255, 255, 255);
+      fillCircle(cx + 13 * s, cy + 3 * s, 11 * s, 255, 255, 255);
+    }
+    // Red-and-white checkered picnic blanket on right meadow
+    for (let py = 152; py < 182; py++) {
+      const span = (py - 152) * 0.6;
+      for (let px = Math.round(210 - span); px < Math.round(282 + span); px++) {
+        const cell = (((px >> 2) + (py >> 2)) & 1) === 0;
+        setPx(px, py, cell ? 255 : 244, cell ? 251 : 63, cell ? 235 : 94);
+      }
+    }
+    // Palm trees on left & right
+    for (const [tx, baseY, bend] of [[34, 158, 1], [292, 162, -1]]) {
+      for (let i = 0; i < 58; i++) {
+        const px = tx + bend * Math.sin(i * 0.035) * 11;
+        const py = baseY - i;
+        const shade = (Math.floor(i / 5) % 2 === 0) ? 0 : -18;
+        fillCircle(px, py, Math.max(2, 4.5 - i * 0.04), 161 + shade, 98 + shade, 48 + shade);
+      }
+      const topX = tx + bend * Math.sin(58 * 0.035) * 11;
+      const topY = baseY - 58;
+      // Palm fronds
+      for (const ang of [-2.4, -1.7, -0.9, -0.2, 0.4, 1.1]) {
+        for (let r = 0; r < 26; r++) {
+          const fx = topX + Math.cos(ang) * r;
+          const fy = topY + Math.sin(ang) * r + (r * r) * 0.028;
+          fillCircle(fx, fy, Math.max(1.5, 3.8 - r * 0.1), 34, 197, 94);
+        }
+      }
+      fillCircle(topX - 3, topY + 4, 3, 120, 53, 15);
+      fillCircle(topX + 3, topY + 5, 3, 120, 53, 15);
+    }
+  } else if (chapId === 2) {
+    // 🍨 Chapter 2: Crystal Dessert Bay (冰晶甜品湾)
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (y < 108) {
+          // Cotton-candy aurora sky (icy cyan -> pastel pink -> lavender)
+          const st = y / 108;
+          const wave = Math.sin(x * 0.04 + y * 0.05) * 10;
+          setPx(
+            x,
+            y,
+            Math.min(255, Math.round(186 + st * 66 + wave)),
+            Math.min(255, Math.round(230 - st * 18)),
+            Math.min(255, Math.round(253 - st * 12))
+          );
+        } else if (y < 145) {
+          // Distant Ice Cream & Whipped Cream Mountains
+          const m1 = 114 + Math.sin(x * 0.035) * 14 + Math.cos(x * 0.08) * 6;
+          if (y < m1) {
+            setPx(x, y, 252, 231, 243);
+          } else if (y < m1 + 7 + Math.sin(x * 0.18) * 3) {
+            setPx(x, y, 255, 255, 255); // White whipped cream frosting cap
+          } else {
+            // Strawberry & mint-ice-cream hills
+            const isMint = ((Math.floor(x / 80)) % 2) === 1;
+            setPx(x, y, isMint ? 167 : 249, isMint ? 243 : 168, isMint ? 208 : 212);
+          }
+        } else {
+          // Sparkling Berry & Ice Crystal Bay
+          const bt = (y - 145) / 55;
+          const sparkle = ((x * 7 + y * 13) % 29 === 0) ? 35 : 0;
+          setPx(
+            x,
+            y,
+            Math.min(255, Math.round(125 + bt * 60 + sparkle)),
+            Math.min(255, Math.round(211 - bt * 20 + sparkle)),
+            Math.min(255, Math.round(252 + sparkle))
+          );
+        }
+      }
+    }
+    // Sparkling ice crystals & 4-point stars in sky
+    for (const [sx, sy] of [[32, 24], [88, 18], [146, 32], [210, 20], [278, 28], [54, 62], [254, 58]]) {
+      fillRect(sx - 4, sy, 9, 1, 255, 255, 255);
+      fillRect(sx, sy - 4, 1, 9, 255, 255, 255);
+      fillCircle(sx, sy, 1.8, 254, 249, 195);
+    }
+    // Ice-Crystal Castle spires on left & Giant Sundae on right
+    for (const [bx, w, h] of [[28, 14, 48], [44, 18, 66], [64, 14, 44]]) {
+      fillRect(bx, 136 - h, w, h, 186, 230, 253);
+      for (let i = 0; i < 14; i++) {
+        fillRect(bx + Math.floor((i * w) / 28), 136 - h - i, Math.max(2, w - Math.floor((i * w) / 14)), 1, 125, 211, 252);
+      }
+    }
+    // Giant Ice-Cream Scoops with cherries on right
+    fillCircle(268, 134, 24, 251, 207, 232); // Strawberry scoop
+    fillCircle(244, 140, 20, 167, 243, 208); // Mint scoop
+    fillCircle(268, 110, 6, 244, 63, 94);    // Red cherry on top
+  } else {
+    // 🚀 Chapter 3: Minion Mecha Fortress (紫兵机械堡)
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (y < 122) {
+          // Deep cyber-purple cosmos & neon grid horizon
+          const st = y / 122;
+          setPx(
+            x,
+            y,
+            Math.round(38 + st * 78),
+            Math.round(18 + st * 38),
+            Math.round(78 + st * 96)
+          );
+        } else if (y < 158) {
+          // Distant cyber-fortress skyline
+          setPx(x, y, 59, 27, 104);
+        } else {
+          // Metallic Mecha Deck with glowing purple grid lines
+          const gridLine = (x % 16 === 0) || (y % 10 === 0);
+          setPx(x, y, gridLine ? 168 : 49, gridLine ? 85 : 36, gridLine ? 247 : 78);
+        }
+      }
+    }
+    // Starfield
+    for (let i = 0; i < 45; i++) {
+      const sx = (i * 73 + 19) % W;
+      const sy = (i * 41 + 11) % 105;
+      setPx(sx, sy, 250, 245, 255);
+      if (i % 4 === 0) setPx(sx + 1, sy, 253, 224, 71);
+    }
+    // Ringed Cyber Planet in top-right sky
+    fillCircle(256, 40, 18, 192, 132, 252);
+    fillCircle(252, 36, 14, 216, 180, 254);
+    for (let a = 0; a < 360; a += 2) {
+      const rad = (a * Math.PI) / 180;
+      const rx = 256 + Math.cos(rad) * 29;
+      const ry = 40 + Math.sin(rad) * 8 - Math.cos(rad) * 5;
+      if (Math.sin(rad) > 0 || Math.hypot(rx - 256, ry - 40) > 18) {
+        setPx(rx, ry, 56, 189, 248);
+        setPx(rx, ry + 1, 250, 204, 21);
+      }
+    }
+    // Mecha Fortress Towers & Giant Minion Silhouette with Glowing Visor & Crown!
+    for (const [tx, tw, th] of [[16, 28, 72], [50, 22, 54], [248, 24, 62], [278, 30, 78]]) {
+      fillRect(tx, 158 - th, tw, th, 76, 29, 149);
+      fillRect(tx + 4, 158 - th + 8, tw - 8, 4, 56, 189, 248); // Cyan energy visor strip
+      fillRect(tx + 4, 158 - th + 18, tw - 8, 3, 250, 204, 21); // Gold indicator
+    }
+    // Yellow-and-black hazard stripe along deck edge (y = 156..161)
+    for (let x = 0; x < W; x++) {
+      const yellow = ((x + 4) >> 3) & 1;
+      for (let y = 156; y < 161; y++) {
+        setPx(x, y, yellow ? 250 : 30, yellow ? 204 : 27, yellow ? 21 : 46);
+      }
+    }
+  }
+  return rgba;
 }
 
 main();

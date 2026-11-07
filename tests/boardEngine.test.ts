@@ -82,6 +82,15 @@ describe('High-Detail Pixel Models & Reference Stickers Pipeline', () => {
       expect(buf.readUInt32BE(16)).toBe(48);
       expect(buf.readUInt32BE(20)).toBe(48);
     }
+
+    // Verify 320x200 16-bit pixel scenic backgrounds for all 3 chapters
+    for (const chapId of [1, 2, 3]) {
+      const bgPath = path.resolve(`public/assets/models/bg_chapter_${chapId}.png`);
+      expect(fs.existsSync(bgPath)).toBe(true);
+      const buf = fs.readFileSync(bgPath);
+      expect(buf.readUInt32BE(16)).toBe(320);
+      expect(buf.readUInt32BE(20)).toBe(200);
+    }
   });
 
   it('configures server-side global Endless leaderboard on Cloudflare (SQLite Durable Object + Pages API)', async () => {

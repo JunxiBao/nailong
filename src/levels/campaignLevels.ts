@@ -7,6 +7,7 @@ export interface ChapterMeta {
   startLevel: number;
   endLevel: number;
   bgGradient: string;
+  bgImage: string;
   tip: string;
 }
 
@@ -18,6 +19,7 @@ export const CAMPAIGN_CHAPTERS: ChapterMeta[] = [
     startLevel: 1,
     endLevel: 10,
     bgGradient: 'linear-gradient(180deg, #dcfce7 0%, #bbf7d0 50%, #fef9c3 100%)',
+    bgImage: '/assets/models/bg_chapter_1.png',
     tip: '💡 第 5 关与第 10 关为【野餐岛 Boss 战】！',
   },
   {
@@ -27,6 +29,7 @@ export const CAMPAIGN_CHAPTERS: ChapterMeta[] = [
     startLevel: 11,
     endLevel: 20,
     bgGradient: 'linear-gradient(180deg, #e0f2fe 0%, #bae6fd 50%, #fce7f3 100%)',
+    bgImage: '/assets/models/bg_chapter_2.png',
     tip: '💡 第 15 关与第 20 关为【甜品湾 Boss 战】！',
   },
   {
@@ -36,6 +39,7 @@ export const CAMPAIGN_CHAPTERS: ChapterMeta[] = [
     startLevel: 21,
     endLevel: 30,
     bgGradient: 'linear-gradient(180deg, #f3e8ff 0%, #e9d5ff 50%, #fef3c7 100%)',
+    bgImage: '/assets/models/bg_chapter_3.png',
     tip: '💡 第 25 关与第 30 关为【机械堡终极 Boss 战】！',
   },
 ];
