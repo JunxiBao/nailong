@@ -72,6 +72,39 @@ describe('High-Detail Pixel Models & Reference Stickers Pipeline', () => {
       expect(buf.readUInt32BE(16)).toBe(spec.width);
       expect(buf.readUInt32BE(20)).toBe(spec.height);
     }
+
+    // Verify standalone 48x48 HUD & Goal legend icons exist (fixes mobile DPR/responsive sprite shift)
+    for (const kind of ['nailong', 'bombloong', 'minion', 'drumstick', 'strawberry', 'milktea', 'rainbow']) {
+      const iconPath = path.resolve(`public/assets/models/tile_${kind}.png`);
+      expect(fs.existsSync(iconPath)).toBe(true);
+      const buf = fs.readFileSync(iconPath);
+      expect(buf.readUInt32BE(16)).toBe(48);
+      expect(buf.readUInt32BE(20)).toBe(48);
+    }
+  });
+
+  it('configures server-side global Endless leaderboard on Cloudflare (SQLite Durable Object + Pages API)', async () => {
+    const wranglerRaw = fs.readFileSync(path.resolve('wrangler.jsonc'), 'utf-8');
+    const wranglerCfg = JSON.parse(wranglerRaw);
+    expect(wranglerCfg.main).toBe('worker/index.mjs');
+    expect(wranglerCfg.assets.run_worker_first).toContain('/api/*');
+    expect(wranglerCfg.migrations[0].new_sqlite_classes).toContain('LeaderboardDO');
+    expect(fs.existsSync(path.resolve('worker/index.mjs'))).toBe(true);
+
+    // Smoke-test the Pages API handler logic (POST high score + GET global topScore & ranking)
+    // @ts-expect-error JS module without d.ts
+    const { onRequest } = await import('../functions/api/leaderboard.js');
+    const postReq = new Request('https://example.com/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerId: 'nl_testplayer01', nickname: '奶龙干饭王', score: 12800 }),
+    });
+    const postRes = await onRequest({ request: postReq, env: {} });
+    const postData = await postRes.json();
+    expect(postData.ok).toBe(true);
+    expect(postData.topScore).toBeGreaterThanOrEqual(12800);
+    expect(postData.championName).toBe('奶龙干饭王');
+    expect(postData.playerRank).toBe(1);
   });
 });
 

@@ -4,9 +4,10 @@ node_modules/
 # Build output
 dist/
 
-# Cloudflare Wrangler
+# Cloudflare Wrangler & Local Dev Leaderboard DB
 .wrangler/
 .dev.vars
+.local-leaderboard.json
 
 # Legacy scratch downloads (root /assets only, keep src/assets & public/assets!)
 /assets/

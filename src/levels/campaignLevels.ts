@@ -908,6 +908,8 @@ export const ENDLESS_LEVEL: LevelConfig = {
 };
 
 export interface SaveProgress {
+  playerId: string;
+  playerNickname: string;
   unlockedLevel: number;
   levelStars: Record<number, number>;
   levelBestScores: Record<number, number>;
@@ -917,8 +919,15 @@ export interface SaveProgress {
 
 const STORAGE_KEY = 'nailong_match3_save_v1';
 
+function generatePlayerId(): string {
+  const rand = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  return `nl_${rand}`;
+}
+
 export function loadProgress(): SaveProgress {
   const fallback: SaveProgress = {
+    playerId: generatePlayerId(),
+    playerNickname: '',
     unlockedLevel: 1,
     levelStars: {},
     levelBestScores: {},
@@ -932,13 +941,25 @@ export function loadProgress(): SaveProgress {
   };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return fallback;
+    if (!raw) {
+      saveProgress(fallback);
+      return fallback;
+    }
     const parsed = JSON.parse(raw);
-    return {
+    const merged: SaveProgress = {
       ...fallback,
       ...parsed,
+      playerId:
+        typeof parsed.playerId === 'string' && parsed.playerId.length >= 4
+          ? parsed.playerId
+          : fallback.playerId,
+      playerNickname: typeof parsed.playerNickname === 'string' ? parsed.playerNickname : '',
       boosters: { ...fallback.boosters, ...(parsed.boosters ?? {}) },
     };
+    if (merged.playerId !== parsed.playerId) {
+      saveProgress(merged);
+    }
+    return merged;
   } catch {
     return fallback;
   }

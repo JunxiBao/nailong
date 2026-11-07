@@ -8,7 +8,8 @@
     "pixelize": "node scripts/generate_models_and_stickers.mjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "deploy": "npm run build && npx wrangler pages deploy dist --project-name=nailong-match3",
+    "deploy": "npm run build && npx wrangler deploy",
+    "deploy:pages": "npm run build && npx wrangler pages deploy dist --project-name=nailong-match3",
     "preview": "vite preview",
     "test": "vitest run"
   },

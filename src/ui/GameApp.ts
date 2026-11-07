@@ -1,3 +1,8 @@
+import {
+  fetchGlobalLeaderboard,
+  LeaderboardState,
+  submitEndlessScore,
+} from '../api/leaderboard';
 import { MatchAudio } from '../audio/MatchAudio';
 import {
   COLOR_META,
@@ -8,7 +13,6 @@ import {
   renderBombloongBoss,
   renderNailongMascot,
   renderXiaoQiHelper,
-  TILE_KIND_ORDER,
 } from '../assets/pixelSprites';
 import {
   CAMPAIGN_CHAPTERS,
@@ -92,8 +96,11 @@ export class GameApp {
   private stickers: StickerEntry[] = [];
 
   private screen: 'title' | 'map' | 'play' = 'title';
-  private activeModal: 'none' | 'stickers' | 'rules' | 'win' | 'lose' = 'none';
+  private activeModal: 'none' | 'stickers' | 'rules' | 'leaderboard' | 'win' | 'lose' = 'none';
   private selectedChapter = Math.min(3, Math.max(1, Math.ceil(this.progress.unlockedLevel / 10)));
+  private leaderboard: LeaderboardState | null = null;
+  private isSyncingScore = false;
+  private nickSavedToast = '';
 
   // Gameplay state
   private currentLevel: LevelConfig = CAMPAIGN_LEVELS[0];
@@ -177,8 +184,50 @@ export class GameApp {
     });
 
     this.loadStickerManifest();
+    this.refreshGlobalLeaderboard();
     this.renderUI();
     requestAnimationFrame((ts) => this.tick(ts));
+  }
+
+  private escapeHtml(raw: string): string {
+    return String(raw ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private async refreshGlobalLeaderboard(): Promise<void> {
+    const state = await fetchGlobalLeaderboard(this.progress.playerId);
+    if (state) {
+      this.leaderboard = state;
+      if (this.screen === 'title' || this.activeModal === 'leaderboard' || this.activeModal === 'lose') {
+        this.renderUI();
+      } else if (this.screen === 'play' && this.isEndless) {
+        this.updateHudDom();
+      }
+    }
+  }
+
+  private async syncEndlessScoreToServer(scoreToSync: number): Promise<void> {
+    const best = Math.max(this.progress.endlessBestScore, scoreToSync);
+    if (best <= 0) return;
+    this.isSyncingScore = true;
+    const state = await submitEndlessScore(
+      this.progress.playerId,
+      this.progress.playerNickname,
+      best
+    );
+    this.isSyncingScore = false;
+    if (state) {
+      this.leaderboard = state;
+      if (this.activeModal === 'leaderboard' || this.activeModal === 'lose' || this.screen === 'title') {
+        this.renderUI();
+      } else if (this.screen === 'play' && this.isEndless) {
+        this.updateHudDom();
+      }
+    }
   }
 
   private async loadStickerManifest(): Promise<void> {
@@ -205,6 +254,8 @@ export class GameApp {
     this.isEndless = endless;
     if (!endless) {
       this.selectedChapter = Math.min(CAMPAIGN_CHAPTERS.length, Math.max(1, Math.ceil(level.id / 10)));
+    } else {
+      this.refreshGlobalLeaderboard();
     }
     this.endlessNextMilestone = 3000;
     this.endlessStepGap = 3000;
@@ -292,15 +343,21 @@ export class GameApp {
           <button class="pixel-btn" id="btn-start-map" style="font-size:18px;padding:13px 20px;">
             ▶ 开始闯关大冒险 (${CAMPAIGN_LEVELS.length}关)
           </button>
-          <button class="pixel-btn secondary" id="btn-start-endless">
-            🍗 无尽干饭王模式 (最高: ${this.progress.endlessBestScore})
+          <button class="pixel-btn secondary" id="btn-start-endless" style="flex-direction:column;gap:2px;padding:9px 14px;">
+            <span>🍗 无尽干饭王模式</span>
+            <span style="font-size:11px;font-weight:800;color:#0f172a;">
+              🌍 全服最高: ${this.leaderboard ? this.leaderboard.topScore : '...'} | 我的最高: ${this.progress.endlessBestScore}
+            </span>
           </button>
-          <div style="display:flex;gap:10px;">
-            <button class="pixel-btn" id="btn-open-stickers" style="flex:1;font-size:14px;background:#fde68a;">
-              📒 像素表情图鉴
+          <div style="display:flex;gap:8px;">
+            <button class="pixel-btn" id="btn-open-stickers" style="flex:1;font-size:13px;padding:9px 6px;background:#fde68a;">
+              📒 图鉴
             </button>
-            <button class="pixel-btn" id="btn-open-rules" style="flex:1;font-size:14px;background:#e0e7ff;">
-              ❓ 消除秘籍
+            <button class="pixel-btn" id="btn-open-leaderboard" style="flex:1;font-size:13px;padding:9px 6px;background:#fed7aa;">
+              🏆 全服榜
+            </button>
+            <button class="pixel-btn" id="btn-open-rules" style="flex:1;font-size:13px;padding:9px 6px;background:#e0e7ff;">
+              ❓ 秘籍
             </button>
           </div>
         </div>
@@ -332,6 +389,14 @@ export class GameApp {
       this.audio.playSelect();
       this.activeModal = 'stickers';
       this.renderUI();
+    });
+    document.getElementById('btn-open-leaderboard')?.addEventListener('click', () => {
+      this.audio.unlock();
+      this.audio.playSelect();
+      this.nickSavedToast = '';
+      this.activeModal = 'leaderboard';
+      this.renderUI();
+      this.refreshGlobalLeaderboard();
     });
     document.getElementById('btn-open-rules')?.addEventListener('click', () => {
       this.audio.unlock();
@@ -485,11 +550,11 @@ export class GameApp {
           <div class="side-stage">
             <div class="pixel-box goals-panel">
               <div class="panel-heading">
-                <span>🎯 目标</span>
+                <span>${this.isEndless ? '🏆 无尽纪录' : '🎯 目标'}</span>
                 <span class="palette-preview" title="本关棋盘可消除元素表">
                   ${
                     this.isEndless
-                      ? `<span id="hud-endless-target" style="font-size:11px;color:#b45309;">下一档:${this.endlessNextMilestone}分(+4步)</span>`
+                      ? `<button class="mini-rank-btn" id="btn-hud-rank">🏆 全服榜</button>`
                       : this.buildPalettePreviewHtml()
                   }
                 </span>
@@ -598,18 +663,33 @@ export class GameApp {
   private buildPalettePreviewHtml(): string {
     if (!this.engine) return '';
     return this.engine.palette
-      .map((color) => {
-        const idx = Math.max(0, TILE_KIND_ORDER.indexOf(color));
-        return `<span class="palette-mini-icon" title="可消除：${COLOR_META[color].label}" style="background-position:-${idx * 2 * 16}px 0;"></span>`;
-      })
+      .map(
+        (color) =>
+          `<img class="pixel-img palette-mini-icon" src="/assets/models/tile_${color}.png" alt="${COLOR_META[color].label}" title="可消除：${COLOR_META[color].label}" />`
+      )
       .join('');
   }
 
   private buildGoalsHtml(): string {
     if (this.isEndless) {
+      const serverTop = this.leaderboard?.topScore ?? 0;
+      const serverChamp = this.leaderboard?.championName ?? '加载中';
+      const isLeading = this.score > 0 && this.score >= serverTop;
+      const shownGlobalTop = Math.max(serverTop, this.score);
+      const shownChamp = isLeading
+        ? this.escapeHtml(this.progress.playerNickname || '你正在领跑!')
+        : this.escapeHtml(serverChamp);
+      const myBest = Math.max(this.progress.endlessBestScore, this.score);
+
       return `
+        <div class="goal-chip ${isLeading ? 'done' : ''}" style="background:${isLeading ? '#fef08a' : '#fff7ed'};">
+          🌍 全服最高: ${shownGlobalTop} (${shownChamp})
+        </div>
         <div class="goal-chip">
-          🍗 下一奖励档: ${this.endlessNextMilestone} 分 (+4步)
+          🧑 我的最高: ${myBest}
+        </div>
+        <div class="goal-chip">
+          🍗 下一档: ${this.endlessNextMilestone}分 (+4步)
         </div>
       `;
     }
@@ -619,8 +699,7 @@ export class GameApp {
         let icon = '⭐';
         let label = '';
         if (g.type === 'collect' && g.color) {
-          const idx = Math.max(0, TILE_KIND_ORDER.indexOf(g.color));
-          icon = `<span class="goal-tile-icon" style="background-position:-${idx * 2 * 20}px 0;"></span>`;
+          icon = `<img class="pixel-img goal-tile-icon" src="/assets/models/tile_${g.color}.png" alt="${COLOR_META[g.color].label}" />`;
           label = COLOR_META[g.color].label;
         } else if (g.type === 'ice') {
           icon = '🧊';
@@ -664,11 +743,6 @@ export class GameApp {
     const goalsEl = document.getElementById('hud-goals');
     if (goalsEl) goalsEl.innerHTML = this.buildGoalsHtml();
 
-    const endlessTargetEl = document.getElementById('hud-endless-target');
-    if (endlessTargetEl && this.isEndless) {
-      endlessTargetEl.textContent = `下一档:${this.endlessNextMilestone}分(+4步)`;
-    }
-
     const speechEl = document.getElementById('hud-speech');
     if (speechEl) speechEl.textContent = this.speechText;
 
@@ -698,8 +772,23 @@ export class GameApp {
   private bindPlayEvents(): void {
     document.getElementById('btn-exit-level')?.addEventListener('click', () => {
       this.audio.playSelect();
+      if (this.isEndless && this.score > 0) {
+        if (this.score > this.progress.endlessBestScore) {
+          this.progress.endlessBestScore = this.score;
+          saveProgress(this.progress);
+        }
+        this.syncEndlessScoreToServer(this.score);
+      }
       this.screen = this.isEndless ? 'title' : 'map';
       this.renderUI();
+    });
+
+    document.getElementById('btn-hud-rank')?.addEventListener('click', () => {
+      this.audio.playSelect();
+      this.nickSavedToast = '';
+      this.activeModal = 'leaderboard';
+      this.renderUI();
+      this.refreshGlobalLeaderboard();
     });
 
     document.getElementById('btn-mute')?.addEventListener('click', () => {
@@ -1116,7 +1205,9 @@ export class GameApp {
   private async postTurnChecks(consumedMove: boolean): Promise<void> {
     // Endless mode milestones!
     if (this.isEndless) {
+      let hitMilestone = false;
       while (this.score >= this.endlessNextMilestone) {
+        hitMilestone = true;
         this.endlessTier++;
         this.movesLeft += 4;
         this.endlessStepGap += 450;
@@ -1132,10 +1223,17 @@ export class GameApp {
         this.progress.endlessBestScore = this.score;
         saveProgress(this.progress);
       }
+      if (hitMilestone && this.score > 0) {
+        this.syncEndlessScoreToServer(this.score);
+      }
       if (this.movesLeft <= 0) {
         this.audio.playOutOfMoves();
+        this.nickSavedToast = '';
         this.activeModal = 'lose';
         this.renderUI();
+        if (this.score > 0) {
+          this.syncEndlessScoreToServer(this.score);
+        }
       }
       return;
     }
@@ -1293,6 +1391,83 @@ export class GameApp {
           </div>
         </div>
       `;
+    } else if (this.activeModal === 'leaderboard') {
+      const topScore = this.leaderboard?.topScore ?? 0;
+      const champ = this.escapeHtml(this.leaderboard?.championName ?? '虚位以待');
+      const entries = this.leaderboard?.entries ?? [];
+      const myRank = this.leaderboard?.playerRank;
+      const rowsHtml =
+        entries.length === 0
+          ? `<div style="padding:14px;font-weight:800;color:#64748b;">暂无全服记录，快去无尽模式抢下全服第一吧！</div>`
+          : entries
+              .map((item) => {
+                const medal =
+                  item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : `#${item.rank}`;
+                const isMe = item.playerId === this.progress.playerId;
+                return `
+                  <div class="leaderboard-row ${isMe ? 'me' : ''}">
+                    <span class="lb-rank">${medal}</span>
+                    <span class="lb-name">${this.escapeHtml(item.nickname)}${isMe ? ' (我)' : ''}</span>
+                    <span class="lb-score">${item.score} 分</span>
+                  </div>
+                `;
+              })
+              .join('');
+
+      backdrop.innerHTML = `
+        <div class="pixel-box modal-card">
+          <h2 style="margin:0 0 8px;">🏆 无尽模式 · 全服最高分榜</h2>
+          <div class="leaderboard-banner">
+            <div style="font-size:12px;font-weight:800;color:#9a3412;">👑 当前全服最高分纪录</div>
+            <div style="font-size:22px;font-weight:900;color:#b45309;margin:2px 0;">
+              ${topScore} 分
+            </div>
+            <div style="font-size:12px;font-weight:900;color:#2b1e16;">
+              纪录保持者：${champ} ${
+                this.leaderboard ? `(共 ${this.leaderboard.totalPlayers} 位干饭家上榜)` : '(同步中...)'
+              }
+            </div>
+          </div>
+
+          <div style="font-size:12px;font-weight:800;margin:6px 0;color:#475569;">
+            我的本地最高: <b>${this.progress.endlessBestScore}</b> 分
+            ${myRank ? ` · 全服排名: <b style="color:#d97706;">第 #${myRank} 名</b>` : ''}
+          </div>
+
+          <div class="nick-form">
+            <input
+              id="nick-input"
+              class="pixel-input"
+              type="text"
+              maxlength="12"
+              placeholder="输入你的上榜昵称 (最多12字)"
+              value="${this.escapeHtml(this.progress.playerNickname)}"
+            />
+            <button class="pixel-btn topbar-btn" id="btn-save-nick">
+              ${this.isSyncingScore ? '上传中...' : '💾 保存并同步'}
+            </button>
+          </div>
+          ${
+            this.nickSavedToast
+              ? `<div style="font-size:11px;font-weight:900;color:#16a34a;margin-bottom:6px;">${this.escapeHtml(this.nickSavedToast)}</div>`
+              : ''
+          }
+
+          <div class="leaderboard-list">
+            ${rowsHtml}
+          </div>
+
+          <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px;">
+            <button class="pixel-btn secondary topbar-btn" id="btn-refresh-lb">🔄 刷新榜单</button>
+            ${
+              this.screen !== 'play'
+                ? `<button class="pixel-btn topbar-btn" id="btn-lb-play-endless">🍗 冲击全服第一</button>`
+                : ''
+            }
+            <button class="pixel-btn topbar-btn" id="modal-close" style="background:#fde68a;">关闭</button>
+          </div>
+        </div>
+      `;
     } else if (this.activeModal === 'win') {
       const starsStr = '★'.repeat(this.earnedStars) + '☆'.repeat(3 - this.earnedStars);
       const nextLv = CAMPAIGN_LEVELS.find((l) => l.id === this.currentLevel.id + 1);
@@ -1316,18 +1491,65 @@ export class GameApp {
         </div>
       `;
     } else if (this.activeModal === 'lose') {
+      const globalTop = Math.max(this.leaderboard?.topScore ?? 0, this.isEndless ? this.score : 0);
+      const globalChamp =
+        this.isEndless && this.score > 0 && this.score >= (this.leaderboard?.topScore ?? 0)
+          ? this.escapeHtml(this.progress.playerNickname || '你创造新纪录!')
+          : this.escapeHtml(this.leaderboard?.championName ?? '同步中...');
+      const myRank = this.leaderboard?.playerRank;
+
       backdrop.innerHTML = `
         <div class="pixel-box modal-card">
-          <img class="pixel-img" src="${this.getStickerUrl('nailong_eat')}" width="96" height="96" alt="hungry" />
-          <h2 style="margin:8px 0 6px;color:#dc2626;">🥺 步数用完啦，肚肚还没吃饱...</h2>
-          <div style="font-weight:800;font-size:15px;margin-bottom:14px;">
+          <img class="pixel-img" src="${this.getStickerUrl('nailong_eat')}" width="84" height="84" alt="hungry" />
+          <h2 style="margin:6px 0 4px;color:#dc2626;">
+            ${this.isEndless ? '🍗 无尽挑战步数耗尽！' : '🥺 步数用完啦，肚肚还没吃饱...'}
+          </h2>
+          <div style="font-weight:900;font-size:17px;margin-bottom:8px;">
             本局得分: ${this.score}
           </div>
-          <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+          ${
+            this.isEndless
+              ? `
+            <div class="leaderboard-banner" style="margin-bottom:8px;">
+              <div style="font-size:12px;font-weight:900;color:#b45309;">
+                🌍 全服最高纪录: ${globalTop} 分 (${globalChamp})
+              </div>
+              <div style="font-size:11px;font-weight:800;color:#334155;margin-top:2px;">
+                我的最高: ${this.progress.endlessBestScore} 分
+                ${myRank ? ` · 当前全服第 #${myRank} 名` : ''}
+              </div>
+            </div>
+            <div class="nick-form" style="margin-bottom:10px;">
+              <input
+                id="nick-input"
+                class="pixel-input"
+                type="text"
+                maxlength="12"
+                placeholder="输入昵称登上全服榜"
+                value="${this.escapeHtml(this.progress.playerNickname)}"
+              />
+              <button class="pixel-btn topbar-btn" id="btn-save-nick">
+                ${this.isSyncingScore ? '上传中...' : '📤 上榜改名'}
+              </button>
+            </div>
+            ${
+              this.nickSavedToast
+                ? `<div style="font-size:11px;font-weight:900;color:#16a34a;margin-bottom:8px;">${this.escapeHtml(this.nickSavedToast)}</div>`
+                : ''
+            }
+          `
+              : ''
+          }
+          <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
             ${
               !this.usedContinue
-                ? `<button class="pixel-btn accent" id="modal-free-continue">🍗 奶龙卖萌续命 (+5步 · 仅限1次)</button>`
-                : `<button class="pixel-btn" disabled>🍗 本局续命已用完</button>`
+                ? `<button class="pixel-btn accent" id="modal-free-continue">🍗 卖萌续命 (+5步·限1次)</button>`
+                : `<button class="pixel-btn" disabled>🍗 续命已用完</button>`
+            }
+            ${
+              this.isEndless
+                ? `<button class="pixel-btn topbar-btn" id="modal-open-lb" style="background:#fed7aa;">🏆 全服榜</button>`
+                : ''
             }
             <button class="pixel-btn" id="modal-retry">🔄 重新挑战</button>
             <button class="pixel-btn secondary" id="modal-to-map">返回</button>
@@ -1365,6 +1587,41 @@ export class GameApp {
       this.poseTimer = 1.0;
       this.speechText = '最后一次卖萌续命！抓住这 5 步一鼓作气过关吧！';
       this.renderUI();
+    });
+    backdrop.querySelector('#modal-open-lb')?.addEventListener('click', () => {
+      this.audio.playSelect();
+      this.nickSavedToast = '';
+      this.activeModal = 'leaderboard';
+      this.renderUI();
+      this.refreshGlobalLeaderboard();
+    });
+    backdrop.querySelector('#btn-refresh-lb')?.addEventListener('click', () => {
+      this.audio.playSelect();
+      this.refreshGlobalLeaderboard();
+    });
+    backdrop.querySelector('#btn-lb-play-endless')?.addEventListener('click', () => {
+      this.startLevel(ENDLESS_LEVEL, true);
+    });
+    backdrop.querySelector('#btn-save-nick')?.addEventListener('click', async () => {
+      const inputEl = backdrop.querySelector('#nick-input') as HTMLInputElement | null;
+      if (!inputEl) return;
+      const cleaned = inputEl.value
+        .replace(/[<>"'`&/\\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 12);
+      this.progress.playerNickname = cleaned;
+      saveProgress(this.progress);
+      this.audio.playSelect();
+
+      const scoreToPush = Math.max(this.progress.endlessBestScore, this.isEndless ? this.score : 0);
+      if (scoreToPush > 0) {
+        this.nickSavedToast = '✅ 昵称与最高分已同步到服务器！';
+        await this.syncEndlessScoreToServer(scoreToPush);
+      } else {
+        this.nickSavedToast = '✅ 昵称已保存！快去无尽模式打出一局分数上榜吧！';
+        this.renderUI();
+      }
     });
   }
 

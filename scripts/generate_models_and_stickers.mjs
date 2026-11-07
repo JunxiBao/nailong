@@ -1619,12 +1619,14 @@ function main() {
     encodePngRGBA(xiaoqiStrip.width, xiaoqiStrip.height, xiaoqiStrip.rgba)
   );
 
-  console.log('3) Sculpting 48x48 3D-Shaded Match-3 Tile Atlas...');
+  console.log('3) Sculpting 48x48 3D-Shaded Match-3 Tile Atlas & Individual Icons...');
   const tileKinds = ['nailong', 'bombloong', 'minion', 'drumstick', 'strawberry', 'milktea', 'rainbow'];
   const tileFrames = [];
   for (const k of tileKinds) {
-    tileFrames.push(buildTile48(k, false));
+    const idleRgba = buildTile48(k, false);
+    tileFrames.push(idleRgba);
     tileFrames.push(buildTile48(k, true));
+    fs.writeFileSync(path.join(MODEL_OUT_DIR, `tile_${k}.png`), encodePngRGBA(48, 48, idleRgba));
   }
   const tileStrip = packHorizontalStrip(tileFrames, 48, 48);
   fs.writeFileSync(

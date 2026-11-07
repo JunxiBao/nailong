@@ -1,7 +1,25 @@
 {
   "name": "nailong-match3",
+  "main": "worker/index.mjs",
   "compatibility_date": "2026-01-01",
   "assets": {
-    "directory": "./dist"
-  }
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "LEADERBOARD_DO",
+        "class_name": "LeaderboardDO"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["LeaderboardDO"]
+    }
+  ]
 }
