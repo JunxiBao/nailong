@@ -108,8 +108,8 @@ describe('High-Detail Pixel Models & Reference Stickers Pipeline', () => {
     expect(postData.playerRank).toBe(1);
   });
 
-  it('includes both extracted Nailong voice audio assets, removes source .mov files, and alternates clips on playNailongVoice()', () => {
-    expect(NAILONG_VOICE_CLIPS.length).toBe(2);
+  it('includes all 3 extracted Nailong voice audio assets, removes source .mov files, and alternates clips on playNailongVoice()', () => {
+    expect(NAILONG_VOICE_CLIPS.length).toBe(3);
     for (const clipMeta of NAILONG_VOICE_CLIPS) {
       const voicePath = path.resolve('public', clipMeta.url.replace(/^\//, ''));
       expect(fs.existsSync(voicePath)).toBe(true);
@@ -124,14 +124,16 @@ describe('High-Detail Pixel Models & Reference Stickers Pipeline', () => {
     const rootMovs = fs.readdirSync(path.resolve('.')).filter((f) => f.endsWith('.mov'));
     expect(rootMovs).toEqual([]);
 
-    // Verify strict alternating round-robin playback order
+    // Verify strict alternating round-robin playback order across all 3 clips
     const audio = new MatchAudio();
     const first = audio.playNailongVoice();
     const second = audio.playNailongVoice();
     const third = audio.playNailongVoice();
+    const fourth = audio.playNailongVoice();
     expect(first.url).toBe('/assets/audio/nailong_voice.mp3');
     expect(second.url).toBe('/assets/audio/nailong_belly_voice.mp3');
-    expect(third.url).toBe('/assets/audio/nailong_voice.mp3');
+    expect(third.url).toBe('/assets/audio/nailong_full_voice.mp3');
+    expect(fourth.url).toBe('/assets/audio/nailong_voice.mp3');
   });
 });
 

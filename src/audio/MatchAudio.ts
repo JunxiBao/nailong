@@ -28,6 +28,11 @@ export const NAILONG_VOICE_CLIPS: readonly NailongVoiceClipMeta[] = [
     durationMs: 3950,
     subtitle: '“我的大肚肚，真的很酷酷~”',
   },
+  {
+    url: '/assets/audio/nailong_full_voice.mp3',
+    durationMs: 5450,
+    subtitle: '“奶龙又吃撑咯——肚肚没脾气！”',
+  },
 ];
 
 interface VoiceClipState {
