@@ -675,10 +675,10 @@ export class GameApp {
   private buildPalettePreviewHtml(): string {
     if (!this.engine) return '';
     return this.engine.palette
-      .map((color) => {
-        const voiceAttr = color === 'nailong' ? 'data-nailong-voice="1" style="cursor:pointer;"' : '';
-        return `<img class="pixel-img palette-mini-icon" ${voiceAttr} src="/assets/models/tile_${color}.png" alt="${COLOR_META[color].label}" title="可消除：${COLOR_META[color].label}" />`;
-      })
+      .map(
+        (color) =>
+          `<img class="pixel-img palette-mini-icon" src="/assets/models/tile_${color}.png" alt="${COLOR_META[color].label}" title="可消除：${COLOR_META[color].label}" />`
+      )
       .join('');
   }
 
@@ -711,8 +711,7 @@ export class GameApp {
         let icon = '⭐';
         let label = '';
         if (g.type === 'collect' && g.color) {
-          const voiceAttr = g.color === 'nailong' ? 'data-nailong-voice="1" style="cursor:pointer;"' : '';
-          icon = `<img class="pixel-img goal-tile-icon" ${voiceAttr} src="/assets/models/tile_${g.color}.png" alt="${COLOR_META[g.color].label}" />`;
+          icon = `<img class="pixel-img goal-tile-icon" src="/assets/models/tile_${g.color}.png" alt="${COLOR_META[g.color].label}" />`;
           label = COLOR_META[g.color].label;
         } else if (g.type === 'ice') {
           icon = '🧊';
@@ -908,21 +907,13 @@ export class GameApp {
 
     canvas.addEventListener('pointerdown', (ev) => {
       ev.preventDefault();
-      if (this.activeModal !== 'none') return;
+      if (this.isAnimating || this.activeModal !== 'none') return;
       this.audio.unlock();
-
-      const cell = getCellFromEvent(ev);
-      const clickedNailong =
-        !!cell &&
-        (this.renderGrid[cell.row]?.[cell.col]?.tile?.color === 'nailong' ||
-          this.renderGrid[cell.row]?.[cell.col]?.tile?.special === 'rainbow');
-      if (clickedNailong) {
-        this.audio.playNailongVoice();
-      }
-
-      if (this.isAnimating || !cell) return;
       this.lastActionTime = performance.now();
       this.hintPair = null;
+
+      const cell = getCellFromEvent(ev);
+      if (!cell) return;
 
       if (this.activeBooster === 'hammer') {
         this.executeHammerBooster(cell);
@@ -943,9 +934,7 @@ export class GameApp {
         this.dragStartCell = null;
         this.handlePlayerSwapAttempt(from, cell);
       } else {
-        if (!clickedNailong) {
-          this.audio.playSelect();
-        }
+        this.audio.playSelect();
         this.selectedCell = cell;
       }
     });
