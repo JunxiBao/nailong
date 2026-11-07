@@ -314,7 +314,7 @@ export class GameApp {
         this.screen === 'title' || (this.screen === 'play' && this.isEndless)
           ? reachedChap
           : Math.min(3, Math.max(1, this.selectedChapter));
-      document.body.className = `theme-chap-${chapId}`;
+      document.documentElement.className = `theme-chap-${chapId}`;
     }
 
     if (this.screen === 'title') {

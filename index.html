@@ -4,18 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>奶龙消消乐：大肚肚美食派对 (Pixel Edition)</title>
-  </head>
-  <body>
     <script>
       // Apply the player's furthest reached chapter background immediately (before the game bundle loads)
       try {
         var save = JSON.parse(localStorage.getItem('nailong_match3_save_v1') || '{}');
-        var chap = Math.min(3, Math.max(1, Math.ceil((save.unlockedLevel || 1) / 10)));
-        document.body.className = 'theme-chap-' + chap;
+        var chap = Math.min(3, Math.max(1, Math.ceil((Number(save.unlockedLevel) || 1) / 10)));
+        document.documentElement.className = 'theme-chap-' + chap;
       } catch (e) {
-        document.body.className = 'theme-chap-1';
+        document.documentElement.className = 'theme-chap-1';
       }
     </script>
+  </head>
+  <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
