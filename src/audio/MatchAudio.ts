@@ -21,7 +21,7 @@ export const NAILONG_VOICE_CLIPS: readonly NailongVoiceClipMeta[] = [
   {
     url: '/assets/audio/nailong_voice.mp3',
     durationMs: 1550,
-    subtitle: '“我是奶龙，我才是奶龙！”',
+    subtitle: '“我是奶龙”',
   },
   {
     url: '/assets/audio/nailong_belly_voice.mp3',
@@ -31,7 +31,7 @@ export const NAILONG_VOICE_CLIPS: readonly NailongVoiceClipMeta[] = [
   {
     url: '/assets/audio/nailong_full_voice.mp3',
     durationMs: 5450,
-    subtitle: '“奶龙又吃撑咯——肚肚没脾气！”',
+    subtitle: '“中午吃太饱了，肚子不舒服”',
   },
 ];
 
