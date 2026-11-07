@@ -80,16 +80,6 @@ interface ActiveBlastVisual {
 const CELL_PX = 64;
 const BOARD_PX = CELL_PX * 8; // 512x512 crisp high-detail pixel grid
 
-const NAILONG_QUIPS = [
-  '我是奶龙，我才是奶龙！',
-  '我的大肚肚真的很酷酷~ duang!',
-  '啊呜！再多消几个烤鸡腿嘛！',
-  '4连能喷火，5连变彩虹奶龙哦！',
-  '把两个特效棋子交换试试？超爽哒！',
-  '暴暴龙那家伙休想抢走我的零食！',
-  '肚肚能量满格时，记得点我放大招！',
-];
-
 export class GameApp {
   private root: HTMLElement;
   private audio = new MatchAudio();
@@ -184,14 +174,16 @@ export class GameApp {
       this.dragStartPt = null;
     });
 
-    // Delegated click handler so any Nailong sticker / icon marked with data-nailong-voice plays Nailong's voice clip
+    // Delegated click handler so any Nailong sticker marked with data-nailong-voice plays Nailong's alternating voice clips
     this.root.addEventListener('click', (ev) => {
       const target = ev.target as HTMLElement | null;
       if (target?.closest('[data-nailong-voice]')) {
         this.audio.unlock();
-        this.audio.playNailongVoice();
+        const clip = this.audio.playNailongVoice();
         this.nailongPose = 'pat_belly';
-        this.poseTimer = 1.45;
+        this.poseTimer = clip.durationMs / 1000;
+        const titleLbl = document.getElementById('title-voice-label');
+        if (titleLbl) titleLbl.textContent = `🔊 ${clip.subtitle}`;
       }
     });
 
@@ -340,9 +332,9 @@ export class GameApp {
             <div style="font-size:11px;font-weight:800;margin-top:4px;">馋得流口水</div>
           </div>
 
-          <div id="title-mascot-box" style="cursor:pointer;" title="点击奶龙播放原声语音！">
+          <div id="title-mascot-box" style="cursor:pointer;" title="点击奶龙轮播原声语音！">
             <canvas id="title-mascot" width="192" height="192"></canvas>
-            <div style="font-size:12px;font-weight:900;color:#b45309;">▲ 点我听：“我是奶龙！” ▲</div>
+            <div id="title-voice-label" style="font-size:12px;font-weight:900;color:#b45309;">▲ 点我轮播奶龙原声语音 ▲</div>
           </div>
 
           <div class="hero-sticker-card right" data-nailong-voice="1" style="cursor:pointer;" title="点击听奶龙原声！">
@@ -379,9 +371,11 @@ export class GameApp {
     this.titleMascotCanvas = document.getElementById('title-mascot') as HTMLCanvasElement;
     document.getElementById('title-mascot-box')?.addEventListener('click', () => {
       this.audio.unlock();
-      this.audio.playNailongVoice();
+      const clip = this.audio.playNailongVoice();
       this.nailongPose = 'pat_belly';
-      this.poseTimer = 1.45;
+      this.poseTimer = clip.durationMs / 1000;
+      const titleLbl = document.getElementById('title-voice-label');
+      if (titleLbl) titleLbl.textContent = `🔊 ${clip.subtitle}`;
     });
     document.getElementById('btn-start-map')?.addEventListener('click', () => {
       this.audio.unlock();
@@ -816,14 +810,14 @@ export class GameApp {
 
     const triggerBellySkill = () => {
       this.audio.unlock();
-      this.audio.playNailongVoice();
+      const clip = this.audio.playNailongVoice();
       if (this.isAnimating) return;
       if (this.bellyEnergy >= 100) {
         this.executeBellySlamSkill();
       } else {
         this.nailongPose = 'pat_belly';
-        this.poseTimer = 1.45;
-        this.speechText = NAILONG_QUIPS[Math.floor(Math.random() * NAILONG_QUIPS.length)];
+        this.poseTimer = clip.durationMs / 1000;
+        this.speechText = clip.subtitle;
         this.updateHudDom();
       }
     };
@@ -1596,12 +1590,12 @@ export class GameApp {
       if (this.usedContinue) return;
       this.usedContinue = true;
       this.audio.unlock();
-      this.audio.playNailongVoice();
+      const clip = this.audio.playNailongVoice();
       this.movesLeft += 5;
       this.activeModal = 'none';
       this.nailongPose = 'pat_belly';
-      this.poseTimer = 1.45;
-      this.speechText = '“我是奶龙，我才是奶龙！”抓住这 5 步一鼓作气过关吧！';
+      this.poseTimer = clip.durationMs / 1000;
+      this.speechText = `${clip.subtitle} 抓住这 5 步一鼓作气过关吧！`;
       this.renderUI();
     });
     backdrop.querySelector('#modal-open-lb')?.addEventListener('click', () => {

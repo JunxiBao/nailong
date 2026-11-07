@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { BoardEngine } from '../src/match3/BoardEngine';
 import { CAMPAIGN_LEVELS } from '../src/levels/campaignLevels';
 import { TileColor } from '../src/match3/types';
-import { MatchAudio } from '../src/audio/MatchAudio';
+import { MatchAudio, NAILONG_VOICE_CLIPS } from '../src/audio/MatchAudio';
 
 function makeSeededRng(seed = 12345): () => number {
   let s = seed >>> 0;
@@ -108,18 +108,30 @@ describe('High-Detail Pixel Models & Reference Stickers Pipeline', () => {
     expect(postData.playerRank).toBe(1);
   });
 
-  it('includes extracted Nailong voice audio asset and safe MatchAudio.playNailongVoice() trigger', () => {
-    const voicePath = path.resolve('public/assets/audio/nailong_voice.mp3');
-    expect(fs.existsSync(voicePath)).toBe(true);
-    const buf = fs.readFileSync(voicePath);
-    expect(buf.length).toBeGreaterThan(10000);
-    // Verify ID3 header or MPEG sync word
-    const isId3 = buf[0] === 0x49 && buf[1] === 0x44 && buf[2] === 0x33;
-    const isMpegSync = buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0;
-    expect(isId3 || isMpegSync).toBe(true);
+  it('includes both extracted Nailong voice audio assets, removes source .mov files, and alternates clips on playNailongVoice()', () => {
+    expect(NAILONG_VOICE_CLIPS.length).toBe(2);
+    for (const clipMeta of NAILONG_VOICE_CLIPS) {
+      const voicePath = path.resolve('public', clipMeta.url.replace(/^\//, ''));
+      expect(fs.existsSync(voicePath)).toBe(true);
+      const buf = fs.readFileSync(voicePath);
+      expect(buf.length).toBeGreaterThan(10000);
+      const isId3 = buf[0] === 0x49 && buf[1] === 0x44 && buf[2] === 0x33;
+      const isMpegSync = buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0;
+      expect(isId3 || isMpegSync).toBe(true);
+    }
 
+    // Verify source .mov video files in project root have been cleaned up
+    const rootMovs = fs.readdirSync(path.resolve('.')).filter((f) => f.endsWith('.mov'));
+    expect(rootMovs).toEqual([]);
+
+    // Verify strict alternating round-robin playback order
     const audio = new MatchAudio();
-    expect(() => audio.playNailongVoice()).not.toThrow();
+    const first = audio.playNailongVoice();
+    const second = audio.playNailongVoice();
+    const third = audio.playNailongVoice();
+    expect(first.url).toBe('/assets/audio/nailong_voice.mp3');
+    expect(second.url).toBe('/assets/audio/nailong_belly_voice.mp3');
+    expect(third.url).toBe('/assets/audio/nailong_voice.mp3');
   });
 });
 

@@ -11,7 +11,32 @@ const COMBO_SCALE_HZ = [
   1318.51, // E6
 ];
 
-const NAILONG_VOICE_URL = '/assets/audio/nailong_voice.mp3';
+export interface NailongVoiceClipMeta {
+  url: string;
+  durationMs: number;
+  subtitle: string;
+}
+
+export const NAILONG_VOICE_CLIPS: readonly NailongVoiceClipMeta[] = [
+  {
+    url: '/assets/audio/nailong_voice.mp3',
+    durationMs: 1550,
+    subtitle: '“我是奶龙，我才是奶龙！”',
+  },
+  {
+    url: '/assets/audio/nailong_belly_voice.mp3',
+    durationMs: 3950,
+    subtitle: '“我的大肚肚，真的很酷酷~”',
+  },
+];
+
+interface VoiceClipState {
+  meta: NailongVoiceClipMeta;
+  rawBytes: ArrayBuffer | null;
+  buffer: AudioBuffer | null;
+  isDecoding: boolean;
+  fallbackEl: HTMLAudioElement | null;
+}
 
 export class MatchAudio {
   private ctx: AudioContext | null = null;
@@ -20,59 +45,72 @@ export class MatchAudio {
   private bgmTimer: number | null = null;
   private bgmStep = 0;
 
-  // Custom Nailong voice clip ("我是奶龙，我才是奶龙") state
-  private voiceRawBytes: ArrayBuffer | null = null;
-  private voiceBuffer: AudioBuffer | null = null;
-  private isDecodingVoice = false;
+  // Alternating Nailong voice clips ("我是奶龙，我才是奶龙" <-> "我的大肚肚 真的很酷酷")
+  private voiceClips: VoiceClipState[];
+  private nextVoiceIndex = 0;
   private activeVoiceSource: AudioBufferSourceNode | null = null;
-  private fallbackVoiceEl: HTMLAudioElement | null = null;
   private voiceDuckUntil = 0;
 
   constructor() {
+    this.voiceClips = NAILONG_VOICE_CLIPS.map((meta) => ({
+      meta,
+      rawBytes: null,
+      buffer: null,
+      isDecoding: false,
+      fallbackEl: null,
+    }));
     if (typeof window !== 'undefined') {
-      this.preloadNailongVoice();
+      this.preloadNailongVoices();
     }
   }
 
-  private preloadNailongVoice(): void {
-    try {
-      const el = new Audio(NAILONG_VOICE_URL);
-      el.preload = 'auto';
-      el.setAttribute('playsinline', 'true');
-      this.fallbackVoiceEl = el;
-    } catch {
-      // ignore in non-DOM test environments
-    }
+  private preloadNailongVoices(): void {
+    for (const clip of this.voiceClips) {
+      try {
+        const el = new Audio(clip.meta.url);
+        el.preload = 'auto';
+        el.setAttribute('playsinline', 'true');
+        clip.fallbackEl = el;
+      } catch {
+        // ignore in non-DOM test environments
+      }
 
-    if (typeof fetch !== 'undefined') {
-      fetch(NAILONG_VOICE_URL)
-        .then((res) => (res.ok ? res.arrayBuffer() : null))
-        .then((buf) => {
-          if (!buf) return;
-          this.voiceRawBytes = buf;
-          if (this.ctx) {
-            this.decodeVoiceBuffer(this.ctx);
-          }
-        })
-        .catch(() => {
-          // ignore network errors in headless tests
-        });
+      if (typeof fetch !== 'undefined') {
+        fetch(clip.meta.url)
+          .then((res) => (res.ok ? res.arrayBuffer() : null))
+          .then((buf) => {
+            if (!buf) return;
+            clip.rawBytes = buf;
+            if (this.ctx) {
+              this.decodeSingleVoice(this.ctx, clip);
+            }
+          })
+          .catch(() => {
+            // ignore network errors in headless tests
+          });
+      }
     }
   }
 
-  private decodeVoiceBuffer(ctx: AudioContext): void {
-    if (this.voiceBuffer || this.isDecodingVoice || !this.voiceRawBytes) return;
-    this.isDecodingVoice = true;
-    const copy = this.voiceRawBytes.slice(0);
+  private decodeSingleVoice(ctx: AudioContext, clip: VoiceClipState): void {
+    if (clip.buffer || clip.isDecoding || !clip.rawBytes) return;
+    clip.isDecoding = true;
+    const copy = clip.rawBytes.slice(0);
     ctx
       .decodeAudioData(copy)
       .then((decoded) => {
-        this.voiceBuffer = decoded;
-        this.isDecodingVoice = false;
+        clip.buffer = decoded;
+        clip.isDecoding = false;
       })
       .catch(() => {
-        this.isDecodingVoice = false;
+        clip.isDecoding = false;
       });
+  }
+
+  private decodeAllVoices(ctx: AudioContext): void {
+    for (const clip of this.voiceClips) {
+      this.decodeSingleVoice(ctx, clip);
+    }
   }
 
   private stopActiveVoice(): void {
@@ -85,14 +123,16 @@ export class MatchAudio {
       }
       this.activeVoiceSource = null;
     }
-    if (this.fallbackVoiceEl && !this.fallbackVoiceEl.paused) {
-      try {
-        this.fallbackVoiceEl.pause();
-        if (this.fallbackVoiceEl.readyState > 0) {
-          this.fallbackVoiceEl.currentTime = 0;
+    for (const clip of this.voiceClips) {
+      if (clip.fallbackEl && !clip.fallbackEl.paused) {
+        try {
+          clip.fallbackEl.pause();
+          if (clip.fallbackEl.readyState > 0) {
+            clip.fallbackEl.currentTime = 0;
+          }
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
       }
     }
   }
@@ -111,7 +151,7 @@ export class MatchAudio {
       if (this.ctx.state === 'suspended') {
         this.ctx.resume().catch(() => {});
       }
-      this.decodeVoiceBuffer(this.ctx);
+      this.decodeAllVoices(this.ctx);
     }
     return this.ctx;
   }
@@ -145,19 +185,23 @@ export class MatchAudio {
   }
 
   /**
-   * Plays the extracted audio from the user's root video ("我是奶龙，我才是奶龙")
-   * with zero latency via Web Audio API + synchronous HTMLAudioElement fallback for first-tap iOS/WeChat!
+   * Alternates in round-robin order between the user's Nailong voice clips
+   * ("我是奶龙，我才是奶龙" <-> "我的大肚肚 真的很酷酷") with zero latency!
    */
-  public playNailongVoice(): void {
-    if (this.muted) return;
+  public playNailongVoice(): NailongVoiceClipMeta {
+    const clip = this.voiceClips[this.nextVoiceIndex % this.voiceClips.length];
+    this.nextVoiceIndex = (this.nextVoiceIndex + 1) % this.voiceClips.length;
+
+    if (this.muted) return clip.meta;
     const ctx = this.ensureContext();
     this.stopActiveVoice();
-    this.voiceDuckUntil = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + 1550;
+    this.voiceDuckUntil =
+      (typeof performance !== 'undefined' ? performance.now() : Date.now()) + clip.meta.durationMs;
 
-    if (ctx && this.voiceBuffer && ctx.state === 'running') {
+    if (ctx && clip.buffer && ctx.state === 'running') {
       const src = ctx.createBufferSource();
       const gain = ctx.createGain();
-      src.buffer = this.voiceBuffer;
+      src.buffer = clip.buffer;
       gain.gain.value = 1.15;
       src.connect(gain);
       gain.connect(ctx.destination);
@@ -168,20 +212,21 @@ export class MatchAudio {
       };
       this.activeVoiceSource = src;
       src.start(0);
-      return;
+      return clip.meta;
     }
 
-    if (this.fallbackVoiceEl) {
-      this.fallbackVoiceEl.volume = 1.0;
+    if (clip.fallbackEl) {
+      clip.fallbackEl.volume = 1.0;
       try {
-        if (this.fallbackVoiceEl.readyState > 0) {
-          this.fallbackVoiceEl.currentTime = 0;
+        if (clip.fallbackEl.readyState > 0) {
+          clip.fallbackEl.currentTime = 0;
         }
       } catch {
         // ignore if metadata not yet loaded
       }
-      this.fallbackVoiceEl.play().catch(() => {});
+      clip.fallbackEl.play().catch(() => {});
     }
+    return clip.meta;
   }
 
   private playTone(
