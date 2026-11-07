@@ -1,0 +1,20 @@
+{
+  "name": "nailong-match3-pixel",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "fetch-assets": "node scripts/generate_models_and_stickers.mjs",
+    "pixelize": "node scripts/generate_models_and_stickers.mjs",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "deploy": "npm run build && npx wrangler pages deploy dist --project-name=nailong-match3",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.5"
+  }
+}

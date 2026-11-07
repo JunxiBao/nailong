@@ -1,0 +1,67 @@
+{
+  "stickers": [
+    {
+      "id": "nailong_happy",
+      "desc": "奶龙馋得流口水",
+      "origin": "online-pixelized",
+      "url": "/assets/stickers/nailong_happy.png",
+      "width": 96,
+      "height": 96,
+      "opaqueRatio": 0.612
+    },
+    {
+      "id": "nailong_belly",
+      "desc": "奶龙歪头秀大肚肚",
+      "origin": "online-pixelized",
+      "url": "/assets/stickers/nailong_belly.png",
+      "width": 96,
+      "height": 96,
+      "opaqueRatio": 0.959
+    },
+    {
+      "id": "nailong_wave",
+      "desc": "奶龙开心招手",
+      "origin": "online-pixelized",
+      "url": "/assets/stickers/nailong_wave.png",
+      "width": 96,
+      "height": 96,
+      "opaqueRatio": 0.609
+    },
+    {
+      "id": "nailong_eat",
+      "desc": "奶龙肚饿小眼神",
+      "origin": "online-pixelized",
+      "url": "/assets/stickers/nailong_eat.png",
+      "width": 96,
+      "height": 96,
+      "opaqueRatio": 0.618
+    },
+    {
+      "id": "nailong_cool",
+      "desc": "奶龙捧脸卖萌",
+      "origin": "online-pixelized",
+      "url": "/assets/stickers/nailong_cool.png",
+      "width": 96,
+      "height": 96,
+      "opaqueRatio": 0.475
+    },
+    {
+      "id": "bombloong",
+      "desc": "暴暴龙：蛋壳恶龙",
+      "origin": "online-pixelized",
+      "url": "/assets/stickers/bombloong.png",
+      "width": 96,
+      "height": 96,
+      "opaqueRatio": 0.449
+    },
+    {
+      "id": "xiaoqi",
+      "desc": "天才少年小七",
+      "origin": "online-pixelized",
+      "url": "/assets/stickers/xiaoqi.png",
+      "width": 96,
+      "height": 96,
+      "opaqueRatio": 0.199
+    }
+  ]
+}
