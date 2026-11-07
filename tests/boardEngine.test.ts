@@ -272,4 +272,28 @@ describe('BoardEngine Match-3 Core Mechanics', () => {
     expect(slamRes.consumedMove).toBe(false);
     expect(slamRes.steps[0].spawnedSpecials.length).toBe(2);
   });
+
+  it('automatically detects a dead board with zero valid moves and shuffles to guarantee playable moves', () => {
+    const engine = new BoardEngine(CAMPAIGN_LEVELS[0], makeSeededRng(321));
+    // Construct a dead board where every cell is locked in a strict 5-color Latin-like shift so 0 moves exist
+    const colors: TileColor[] = ['nailong', 'bombloong', 'minion', 'drumstick', 'strawberry'];
+    for (let r = 0; r < engine.rows; r++) {
+      for (let c = 0; c < engine.cols; c++) {
+        engine.grid[r][c].hole = false;
+        engine.grid[r][c].crateHp = 0;
+        // Checkerboard chains so no two orthogonally adjacent cells are movable simultaneously
+        engine.grid[r][c].chain = (r + c) % 2 === 1;
+        engine.grid[r][c].tile = {
+          id: 5000 + r * 10 + c,
+          color: colors[(r * 2 + c) % colors.length],
+          special: 'none',
+        };
+      }
+    }
+
+    expect(engine.findValidMoves().length).toBe(0);
+    const shuffled = engine.ensurePlayableBoard();
+    expect(shuffled).toBe(true);
+    expect(engine.findValidMoves().length).toBeGreaterThan(0);
+  });
 });

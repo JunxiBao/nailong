@@ -341,10 +341,51 @@ export class BoardEngine {
     return false;
   }
 
+  private getAdjacentMovablePairs(): Array<[Coord, Coord]> {
+    const pairs: Array<[Coord, Coord]> = [];
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (!this.isMovableCell(r, c)) continue;
+        const a: Coord = { row: r, col: c };
+        if (this.isMovableCell(r, c + 1)) {
+          pairs.push([a, { row: r, col: c + 1 }]);
+        }
+        if (this.isMovableCell(r + 1, c)) {
+          pairs.push([a, { row: r + 1, col: c }]);
+        }
+      }
+    }
+    return pairs;
+  }
+
   /**
-   * Shuffles movable normal tiles so there are no immediate matches AND at least 1 valid move exists.
+   * Shuffles movable tiles so there are no immediate matches AND at least 1 valid move is 100% guaranteed.
    */
   public shuffleBoard(): boolean {
+    // If chains or crates isolated every movable cell so no two adjacent cells can be swapped,
+    // unlock blocking chains (or crates) first so a valid swap pair exists.
+    if (this.getAdjacentMovablePairs().length === 0) {
+      for (let r = 0; r < this.rows && this.getAdjacentMovablePairs().length < 2; r++) {
+        for (let c = 0; c < this.cols && this.getAdjacentMovablePairs().length < 2; c++) {
+          const cell = this.grid[r][c];
+          if (!cell.hole && cell.crateHp === 0 && cell.chain && cell.tile) {
+            cell.chain = false;
+          }
+        }
+      }
+    }
+    if (this.getAdjacentMovablePairs().length === 0) {
+      for (let r = 0; r < this.rows && this.getAdjacentMovablePairs().length < 1; r++) {
+        for (let c = 0; c < this.cols && this.getAdjacentMovablePairs().length < 1; c++) {
+          const cell = this.grid[r][c];
+          if (!cell.hole && cell.crateHp > 0) {
+            cell.crateHp = 0;
+            cell.tile = this.createTile(this.randomColor(), 'none');
+          }
+        }
+      }
+    }
+
     const movableCoords: Coord[] = [];
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
@@ -353,13 +394,25 @@ export class BoardEngine {
         }
       }
     }
-    if (movableCoords.length < 3) return false;
+    if (movableCoords.length < 2) return false;
 
-    for (let attempt = 0; attempt < 40; attempt++) {
+    for (let attempt = 0; attempt < 60; attempt++) {
       const tiles = movableCoords.map((p) => this.grid[p.row][p.col].tile!);
       for (let i = tiles.length - 1; i > 0; i--) {
         const j = Math.floor(this.rng() * (i + 1));
         [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+      }
+      // On attempts >= 30, refresh normal tile colors in case current board color counts < 3
+      if (attempt >= 30) {
+        tiles.forEach((t, idx) => {
+          if (t.special === 'none') {
+            t.color = this.palette[(idx + attempt) % this.palette.length];
+          }
+        });
+        for (let i = tiles.length - 1; i > 0; i--) {
+          const j = Math.floor(this.rng() * (i + 1));
+          [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+        }
       }
       movableCoords.forEach((p, idx) => {
         this.grid[p.row][p.col].tile = tiles[idx];
@@ -369,29 +422,30 @@ export class BoardEngine {
       }
     }
 
-    // Fallback guaranteed playable setup: plant a clean 1-move 3-match if board is ultra cramped
-    for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.cols; c++) {
-        if (!this.isMovableCell(r, c)) continue;
-        const forbidden = new Set<TileColor>();
-        if (c >= 2 && this.grid[r][c - 1].tile?.color === this.grid[r][c - 2].tile?.color) {
-          if (this.grid[r][c - 1].tile) forbidden.add(this.grid[r][c - 1].tile!.color);
-        }
-        if (r >= 2 && this.grid[r - 1][c].tile?.color === this.grid[r - 2][c].tile?.color) {
-          if (this.grid[r - 1][c].tile) forbidden.add(this.grid[r - 1][c].tile!.color);
-        }
-        this.grid[r][c].tile!.color = this.randomColor(forbidden);
+    // Deterministic match-free fill checking all directions (including chained/unmovable neighbors)
+    for (const p of movableCoords) {
+      const tile = this.grid[p.row][p.col].tile!;
+      if (tile.special !== 'none') continue;
+      for (const candidateColor of this.palette) {
+        tile.color = candidateColor;
+        if (!this.hasAnyMatchQuick()) break;
       }
     }
-    if (this.findValidMoves().length === 0 && movableCoords.length >= 3) {
-      // Turn one movable tile into a rainbow Nailong to guarantee a move!
-      const p = movableCoords[0];
-      this.grid[p.row][p.col].tile!.special = 'rainbow';
+
+    // Plant a guaranteed playable swap on a verified adjacent movable pair if none exists yet
+    const pairs = this.getAdjacentMovablePairs();
+    if (this.findValidMoves().length === 0 && pairs.length > 0) {
+      const [a, b] = pairs[0];
+      const targetTile = this.grid[a.row][a.col].tile!;
+      targetTile.special = 'rainbow';
+      if (this.hasAnyMatchQuick()) {
+        this.grid[b.row][b.col].tile!.special = 'rainbow';
+      }
     }
     return true;
   }
 
-  private ensurePlayableBoard(): boolean {
+  public ensurePlayableBoard(): boolean {
     if (this.findValidMoves().length === 0) {
       return this.shuffleBoard();
     }
@@ -573,7 +627,6 @@ export class BoardEngine {
       }
       affected.push(p);
     }
-    this.ensurePlayableBoard();
     return affected;
   }
 

@@ -128,6 +128,7 @@ export class GameApp {
   private activeFalls: Map<string, { fall: FallMove; progress: number }> = new Map();
   private clearingSet: Set<string> = new Set();
   private clearPopProgress = 0;
+  private shuffleAnimProgress = 0;
 
   private particles: PixelParticle[] = [];
   private flyingSnacks: FlyingSnack[] = [];
@@ -858,16 +859,16 @@ export class GameApp {
       this.renderUI();
     });
 
-    document.getElementById('boost-shuffle')?.addEventListener('click', () => {
+    document.getElementById('boost-shuffle')?.addEventListener('click', async () => {
       if (this.isAnimating || this.progress.boosters.shuffle <= 0) return;
+      this.isAnimating = true;
       this.progress.boosters.shuffle--;
       saveProgress(this.progress);
-      this.audio.playSpecialBlast('rainbow_rays');
-      this.xiaoqiCheerTimer = 1.6;
-      this.engine.shuffleBoard();
-      this.renderGrid = this.engine.cloneGrid();
-      this.speechText = '小七开启旋风重排！棋盘焕然一新啦！';
       this.renderUI();
+      this.isAnimating = true;
+      await this.performAutoShuffleVisual(true, true);
+      this.isAnimating = false;
+      this.lastActionTime = performance.now();
     });
 
     document.getElementById('boost-plus5')?.addEventListener('click', () => {
@@ -1002,7 +1003,12 @@ export class GameApp {
     }
 
     if (res.steps.length === 0) {
-      this.renderGrid = this.engine.cloneGrid();
+      if (res.shuffledAfter) {
+        await this.performAutoShuffleVisual(false, false);
+      } else {
+        this.renderGrid = this.engine.cloneGrid();
+      }
+      await this.postTurnChecks(res.consumedMove);
       this.updateHudDom();
       this.isAnimating = false;
       return;
@@ -1166,10 +1172,50 @@ export class GameApp {
     }
 
     if (shuffledAfter) {
-      this.renderGrid = this.engine.cloneGrid();
-      this.speechText = '棋盘死局啦，小七自动施展旋风重排！';
-      this.updateHudDom();
-      await this.sleep(350);
+      await this.performAutoShuffleVisual(false, false);
+    }
+  }
+
+  private async performAutoShuffleVisual(needEngineShuffle = false, manual = false): Promise<void> {
+    this.audio.playSpecialBlast('rainbow_rays');
+    this.xiaoqiCheerTimer = 1.8;
+    this.speechText = manual
+      ? '小七开启旋风重排！棋盘焕然一新啦！'
+      : '发现棋盘没有可走步数啦，已自动为你免费洗牌重排！';
+    this.updateHudDom();
+    this.showShufflePopup(manual);
+
+    let swappedGrid = false;
+    await this.animateProgress(460, (t) => {
+      if (t >= 0.5 && !swappedGrid) {
+        swappedGrid = true;
+        if (needEngineShuffle) {
+          this.engine.shuffleBoard();
+        }
+        this.renderGrid = this.engine.cloneGrid();
+        // Spawn cheerful swirl sparkles across the board
+        for (let i = 0; i < 18; i++) {
+          const ang = (Math.PI * 2 * i) / 18;
+          const cx = BOARD_PX / 2 + Math.cos(ang) * 90;
+          const cy = BOARD_PX / 2 + Math.sin(ang) * 90;
+          this.particles.push({
+            x: cx,
+            y: cy,
+            vx: Math.cos(ang) * 140,
+            vy: Math.sin(ang) * 140 - 40,
+            color: i % 2 === 0 ? '#FACC15' : '#38BDF8',
+            size: 6,
+            life: 0,
+            maxLife: 0.45,
+          });
+        }
+      }
+      this.shuffleAnimProgress = t;
+    });
+    this.shuffleAnimProgress = 0;
+    this.renderGrid = this.engine.cloneGrid();
+    if (!manual) {
+      this.hintPair = this.engine.getHintMove();
     }
   }
 
@@ -1301,6 +1347,14 @@ export class GameApp {
         this.updateHudDom();
         await this.sleep(300);
       }
+      if (this.engine.findValidMoves().length === 0) {
+        await this.performAutoShuffleVisual(true, false);
+      }
+    }
+
+    // Safeguard: if moves remain and no valid move exists on board, auto-shuffle immediately!
+    if (this.movesLeft > 0 && this.engine.findValidMoves().length === 0) {
+      await this.performAutoShuffleVisual(true, false);
     }
 
     // Check Out of Moves!
@@ -1345,6 +1399,28 @@ export class GameApp {
           <img class="pixel-img" src="${this.comboBanner.stickerUrl}" width="44" height="44" alt="combo" />
           <div style="text-align:left;">
             <div style="font-weight:900;font-size:15px;color:#d97706;">${this.comboBanner.text}</div>
+            <div style="font-weight:800;font-size:11px;color:#2b1e16;">${this.comboBanner.sub}</div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  private showShufflePopup(manual: boolean): void {
+    this.comboBanner = {
+      text: manual ? '🌀 小七旋风洗牌!' : '🌀 无可走步数 · 自动洗牌!',
+      sub: manual ? '棋盘已重新排列!' : '已免费重排棋盘（不消耗步数）',
+      stickerUrl: this.getStickerUrl('xiaoqi_cheer'),
+      timer: 1.65,
+    };
+
+    const slot = document.getElementById('combo-popup-slot');
+    if (slot) {
+      slot.innerHTML = `
+        <div class="combo-popup">
+          <img class="pixel-img" src="${this.comboBanner.stickerUrl}" width="44" height="44" alt="shuffle" />
+          <div style="text-align:left;">
+            <div style="font-weight:900;font-size:15px;color:#0284c7;">${this.comboBanner.text}</div>
             <div style="font-weight:800;font-size:11px;color:#2b1e16;">${this.comboBanner.sub}</div>
           </div>
         </div>
@@ -1702,15 +1778,17 @@ export class GameApp {
       }
     }
 
-    // Idle 5-second smart hint detection
-    if (
-      this.screen === 'play' &&
-      !this.isAnimating &&
-      this.activeModal === 'none' &&
-      !this.hintPair &&
-      now - this.lastActionTime > 5000
-    ) {
-      this.hintPair = this.engine.getHintMove();
+    // Live dead-board auto-shuffle guard + Idle 5-second smart hint detection
+    if (this.screen === 'play' && !this.isAnimating && this.activeModal === 'none' && this.movesLeft > 0) {
+      if (this.engine.findValidMoves().length === 0) {
+        this.isAnimating = true;
+        this.performAutoShuffleVisual(true, false).finally(() => {
+          this.isAnimating = false;
+          this.lastActionTime = performance.now();
+        });
+      } else if (!this.hintPair && now - this.lastActionTime > 5000) {
+        this.hintPair = this.engine.getHintMove();
+      }
     }
 
     // Render live animated pixel mascots
@@ -1908,6 +1986,18 @@ export class GameApp {
         // Clearing pop shrink
         if (this.clearingSet.has(`${r},${c}`)) {
           scale = this.clearPopProgress < 0.35 ? 1.22 : Math.max(0, 1.22 * (1 - this.clearPopProgress));
+        } else if (this.shuffleAnimProgress > 0 && !cell.chain) {
+          const p = this.shuffleAnimProgress;
+          const centerPx = (BOARD_PX - CELL_PX) / 2;
+          const pull = p < 0.5 ? (p / 0.5) * 0.28 : (1 - (p - 0.5) / 0.5) * 0.28;
+          drawX = drawX + (centerPx - drawX) * pull;
+          drawY = drawY + (centerPx - drawY) * pull;
+          if (p < 0.5) {
+            scale = Math.max(0.15, 1 - (p / 0.5) * 0.85);
+          } else {
+            const u = (p - 0.5) / 0.5;
+            scale = u < 0.75 ? 0.15 + (u / 0.75) * 0.98 : 1.13 - ((u - 0.75) / 0.25) * 0.13;
+          }
         }
 
         const spriteSize = Math.round(54 * scale);
