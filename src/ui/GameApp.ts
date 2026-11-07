@@ -11,6 +11,7 @@ import {
   TILE_KIND_ORDER,
 } from '../assets/pixelSprites';
 import {
+  CAMPAIGN_CHAPTERS,
   CAMPAIGN_LEVELS,
   ENDLESS_LEVEL,
   loadProgress,
@@ -92,6 +93,7 @@ export class GameApp {
 
   private screen: 'title' | 'map' | 'play' = 'title';
   private activeModal: 'none' | 'stickers' | 'rules' | 'win' | 'lose' = 'none';
+  private selectedChapter = Math.min(3, Math.max(1, Math.ceil(this.progress.unlockedLevel / 10)));
 
   // Gameplay state
   private currentLevel: LevelConfig = CAMPAIGN_LEVELS[0];
@@ -201,6 +203,9 @@ export class GameApp {
     this.audio.unlock();
     this.currentLevel = level;
     this.isEndless = endless;
+    if (!endless) {
+      this.selectedChapter = Math.min(CAMPAIGN_CHAPTERS.length, Math.max(1, Math.ceil(level.id / 10)));
+    }
     this.endlessNextMilestone = 3000;
     this.endlessStepGap = 3000;
     this.endlessTier = 0;
@@ -285,7 +290,7 @@ export class GameApp {
 
         <div class="title-actions">
           <button class="pixel-btn" id="btn-start-map" style="font-size:18px;padding:13px 20px;">
-            ▶ 开始闯关大冒险 (10关)
+            ▶ 开始闯关大冒险 (${CAMPAIGN_LEVELS.length}关)
           </button>
           <button class="pixel-btn secondary" id="btn-start-endless">
             🍗 无尽干饭王模式 (最高: ${this.progress.endlessBestScore})
@@ -312,6 +317,10 @@ export class GameApp {
     document.getElementById('btn-start-map')?.addEventListener('click', () => {
       this.audio.unlock();
       this.audio.playSelect();
+      this.selectedChapter = Math.min(
+        CAMPAIGN_CHAPTERS.length,
+        Math.max(1, Math.ceil(this.progress.unlockedLevel / 10))
+      );
       this.screen = 'map';
       this.renderUI();
     });
@@ -335,29 +344,43 @@ export class GameApp {
   private renderMapScreen(): void {
     const totalStars = Object.values(this.progress.levelStars).reduce((a, b) => a + b, 0);
     const maxStars = CAMPAIGN_LEVELS.length * 3;
+    const activeChap =
+      CAMPAIGN_CHAPTERS.find((c) => c.id === this.selectedChapter) ?? CAMPAIGN_CHAPTERS[0];
+    const chapterLevels = CAMPAIGN_LEVELS.filter(
+      (lv) => lv.id >= activeChap.startLevel && lv.id <= activeChap.endLevel
+    );
 
-    const nodesHtml = CAMPAIGN_LEVELS.map((lv) => {
-      const unlocked = lv.id <= this.progress.unlockedLevel;
-      const isCurrent = lv.id === this.progress.unlockedLevel;
-      const stars = this.progress.levelStars[lv.id] ?? 0;
-      const starStr = unlocked ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '🔒 未解锁';
-      const isBoss = Boolean(lv.bossMaxHp);
-      const shortName = lv.name.split('·')[1]?.trim() ?? lv.name;
-
+    const chapterTabsHtml = CAMPAIGN_CHAPTERS.map((chap) => {
+      const chapUnlocked = this.progress.unlockedLevel >= chap.startLevel;
+      const isAct = chap.id === activeChap.id;
       return `
-        <div class="level-node ${unlocked ? '' : 'locked'} ${isCurrent ? 'current' : ''} ${isBoss ? 'boss' : ''}"
-             data-lv="${lv.id}">
-          <div class="node-num">${isBoss ? '👑 ' : ''}第 ${lv.id} 关</div>
-          <div class="node-title">${shortName}</div>
-          <div class="node-stars">${starStr}</div>
-          ${
-            isCurrent
-              ? `<div class="current-tag">◀ 奶龙在这儿!</div>`
-              : ''
-          }
-        </div>
+        <button class="chapter-tab ${isAct ? 'active' : ''} ${chapUnlocked ? '' : 'chap-locked'}"
+                data-chap="${chap.id}">
+          ${chapUnlocked ? '' : '🔒 '}${chap.shortTitle}
+        </button>
       `;
     }).join('');
+
+    const nodesHtml = chapterLevels
+      .map((lv) => {
+        const unlocked = lv.id <= this.progress.unlockedLevel;
+        const isCurrent = lv.id === this.progress.unlockedLevel;
+        const stars = this.progress.levelStars[lv.id] ?? 0;
+        const starStr = unlocked ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '🔒 未解锁';
+        const isBoss = Boolean(lv.bossMaxHp);
+        const shortName = lv.name.split('·')[1]?.trim() ?? lv.name;
+
+        return `
+          <div class="level-node ${unlocked ? '' : 'locked'} ${isCurrent ? 'current' : ''} ${isBoss ? 'boss' : ''}"
+               data-lv="${lv.id}">
+            <div class="node-num">${isBoss ? '👑 ' : ''}第 ${lv.id} 关</div>
+            <div class="node-title">${shortName}</div>
+            <div class="node-stars">${starStr}</div>
+            ${isCurrent ? `<div class="current-tag">◀ 奶龙在这儿!</div>` : ''}
+          </div>
+        `;
+      })
+      .join('');
 
     this.root.innerHTML = `
       <div class="pixel-box map-screen">
@@ -365,17 +388,21 @@ export class GameApp {
           <button class="pixel-btn secondary topbar-btn" id="btn-back-title">
             ◀ 首页
           </button>
-          <div class="map-title">🌴 美食岛闯关大地图</div>
+          <div class="map-title">${activeChap.title}</div>
           <div class="star-pill">★ ${totalStars} / ${maxStars}</div>
         </div>
 
-        <div class="vine-map-grid">
+        <div class="chapter-tabs">
+          ${chapterTabsHtml}
+        </div>
+
+        <div class="vine-map-grid" style="background: ${activeChap.bgGradient};">
           ${nodesHtml}
         </div>
 
         <div class="map-footer">
           <div class="map-tip">
-            💡 第 5 关与第 10 关为【暴暴龙 Boss 战】！
+            ${activeChap.tip}
           </div>
           <button class="pixel-btn topbar-btn" id="btn-map-endless">
             🍗 无尽干饭模式
@@ -391,6 +418,16 @@ export class GameApp {
     });
     document.getElementById('btn-map-endless')?.addEventListener('click', () => {
       this.startLevel(ENDLESS_LEVEL, true);
+    });
+    this.root.querySelectorAll<HTMLElement>('.chapter-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const chapId = Number(btn.dataset.chap);
+        if (chapId && chapId !== this.selectedChapter) {
+          this.audio.playSelect();
+          this.selectedChapter = chapId;
+          this.renderUI();
+        }
+      });
     });
     this.root.querySelectorAll<HTMLElement>('.level-node').forEach((el) => {
       el.addEventListener('click', () => {
@@ -1122,6 +1159,10 @@ export class GameApp {
       this.progress.levelBestScores[lvId] = Math.max(this.progress.levelBestScores[lvId] ?? 0, this.score);
       if (lvId >= this.progress.unlockedLevel && lvId < CAMPAIGN_LEVELS.length) {
         this.progress.unlockedLevel = lvId + 1;
+        this.selectedChapter = Math.min(
+          CAMPAIGN_CHAPTERS.length,
+          Math.max(1, Math.ceil(this.progress.unlockedLevel / 10))
+        );
       }
       // Reward 1 random booster on 3-star clear!
       if (this.earnedStars === 3) {

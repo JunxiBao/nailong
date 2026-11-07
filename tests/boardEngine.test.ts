@@ -76,11 +76,17 @@ describe('High-Detail Pixel Models & Reference Stickers Pipeline', () => {
 });
 
 describe('BoardEngine Match-3 Core Mechanics', () => {
-  it('initializes all 10 campaign levels with playable moves and valid cells', () => {
-    for (const level of CAMPAIGN_LEVELS) {
+  it('initializes all 30 campaign levels across 3 chapters with playable moves and valid cells', () => {
+    expect(CAMPAIGN_LEVELS.length).toBe(30);
+    CAMPAIGN_LEVELS.forEach((level, idx) => {
+      expect(level.id).toBe(idx + 1);
+      expect(level.layout?.length).toBe(level.rows);
+      for (const line of level.layout ?? []) {
+        expect(line.length).toBe(level.cols);
+      }
       const engine = new BoardEngine(level, makeSeededRng(level.id * 97));
       expect(engine.findValidMoves().length).toBeGreaterThan(0);
-    }
+    });
   });
 
   it('guarantees every task goal in all campaign levels exists in the matchable tile palette and board layout', () => {

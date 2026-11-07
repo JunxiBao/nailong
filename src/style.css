@@ -239,6 +239,47 @@ img.pixel-img {
   white-space: nowrap;
 }
 
+.chapter-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.chapter-tab {
+  font-family: inherit;
+  font-weight: 900;
+  font-size: 14px;
+  color: var(--outline-dark);
+  background: #ffffff;
+  border: 3px solid var(--outline-dark);
+  padding: 8px 10px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--outline-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: transform 0.06s steps(2);
+}
+
+.chapter-tab:hover {
+  background: #fffbeb;
+  transform: translateY(-2px);
+}
+
+.chapter-tab.active {
+  background: var(--nailong-yellow);
+  box-shadow:
+    inset -2px -2px 0 #e59400,
+    inset 2px 2px 0 #fff59d,
+    0 3px 0 var(--outline-dark);
+}
+
+.chapter-tab.chap-locked:not(.active) {
+  background: #e2e8f0;
+  color: #475569;
+}
+
 .vine-map-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -883,10 +924,22 @@ img.pixel-img {
     padding: 3px 8px;
   }
 
+  .chapter-tabs {
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+
+  .chapter-tab {
+    font-size: 11px;
+    padding: 5px 4px;
+    border-width: 2px;
+    box-shadow: 0 2px 0 var(--outline-dark);
+  }
+
   .vine-map-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
-    padding: 8px;
+    gap: 5px;
+    padding: 6px;
     flex: 1;
     min-height: 0;
     align-content: center;
@@ -894,8 +947,8 @@ img.pixel-img {
 
   .level-node {
     border-width: 3px;
-    padding: 5px 4px;
-    box-shadow: 0 3px 0 var(--outline-dark);
+    padding: 4px 4px;
+    box-shadow: 0 2px 0 var(--outline-dark);
   }
 
   .node-num {
