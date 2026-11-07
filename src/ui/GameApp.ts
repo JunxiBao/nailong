@@ -305,9 +305,14 @@ export class GameApp {
     this.boardCanvas = null;
 
     if (typeof document !== 'undefined' && document.body) {
+      // Title screen & Endless mode use the player's furthest reached chapter background
+      const reachedChap = Math.min(
+        CAMPAIGN_CHAPTERS.length,
+        Math.max(1, Math.ceil(this.progress.unlockedLevel / 10))
+      );
       const chapId =
         this.screen === 'title' || (this.screen === 'play' && this.isEndless)
-          ? 1
+          ? reachedChap
           : Math.min(3, Math.max(1, this.selectedChapter));
       document.body.className = `theme-chap-${chapId}`;
     }
@@ -1897,7 +1902,9 @@ export class GameApp {
         const isEven = (r + c) % 2 === 0;
 
         // Chapter-themed checkerboard cell
-        const chapTheme = this.isEndless ? 1 : Math.min(3, Math.max(1, this.selectedChapter));
+        const chapTheme = this.isEndless
+          ? Math.min(3, Math.max(1, Math.ceil(this.progress.unlockedLevel / 10)))
+          : Math.min(3, Math.max(1, this.selectedChapter));
         if (chapTheme === 2) {
           ctx.fillStyle = isEven ? '#FFF1F2' : '#E0F2FE';
           ctx.fillRect(x + 1, y + 1, CELL_PX - 2, CELL_PX - 2);
