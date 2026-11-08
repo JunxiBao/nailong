@@ -36,12 +36,12 @@ export const NAILONG_VOICE_CLIPS: readonly NailongVoiceClipMeta[] = [
   {
     url: '/assets/audio/nailong_voice_1.mp3',
     durationMs: 3108,
-    subtitle: '“趾压板也无妨，暴暴龙肯为奶龙花心思就好！”',
+    subtitle: '“今天的鸡腿腿有点咸哦”',
   },
   {
     url: '/assets/audio/nailong_voice_2.mp3',
     durationMs: 5796,
-    subtitle: '“我没有脖子 我也没有腰”',
+    subtitle: '“我没有脖子 我也没有腰，我就是个球球”',
   },
   {
     url: '/assets/audio/nailong_voice_3.mp3',
