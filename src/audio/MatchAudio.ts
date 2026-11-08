@@ -33,6 +33,21 @@ export const NAILONG_VOICE_CLIPS: readonly NailongVoiceClipMeta[] = [
     durationMs: 5450,
     subtitle: '“中午吃太饱了，肚子不舒服”',
   },
+  {
+    url: '/assets/audio/nailong_voice_1.mp3',
+    durationMs: 3108,
+    subtitle: '“趾压板也无妨，暴暴龙肯为奶龙花心思就好！”',
+  },
+  {
+    url: '/assets/audio/nailong_voice_2.mp3',
+    durationMs: 5796,
+    subtitle: '“我没有脖子 我也没有腰”',
+  },
+  {
+    url: '/assets/audio/nailong_voice_3.mp3',
+    durationMs: 5050,
+    subtitle: '“小七，没有你我可怎么活啊！”',
+  },
 ];
 
 interface VoiceClipState {
