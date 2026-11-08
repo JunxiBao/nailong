@@ -119,6 +119,7 @@ export class GameApp {
   private score = 0;
   private movesLeft = 20;
   private movesUsed = 0;
+  private lastMovesBonus = 0;
   private bellyEnergy = 0; // 0..100
   private bossHp = 0;
   private bossHurtTimer = 0;
@@ -302,6 +303,7 @@ export class GameApp {
     this.score = 0;
     this.movesLeft = level.moves;
     this.movesUsed = 0;
+    this.lastMovesBonus = 0;
     this.bellyEnergy = 15;
     this.bossHp = level.bossMaxHp ?? 0;
     this.bossHurtTimer = 0;
@@ -339,15 +341,6 @@ export class GameApp {
       this.progress.chapterBoosters[chap] = createDefaultBoosters();
     }
     return this.progress.chapterBoosters[chap];
-  }
-
-  private resetChapterBoosters(chapId: number): void {
-    if (!this.progress.chapterBoosters) {
-      this.progress.chapterBoosters = {};
-    }
-    this.progress.chapterBoosters[chapId] = createDefaultBoosters();
-    this.progress.boosters = { ...this.progress.chapterBoosters[chapId] };
-    saveProgress(this.progress);
   }
 
   private renderUI(): void {
@@ -480,7 +473,6 @@ export class GameApp {
     const activeChap =
       CAMPAIGN_CHAPTERS.find((c) => c.id === this.selectedChapter) ?? CAMPAIGN_CHAPTERS[0];
     const activeChapStars = getChapterStars(this.progress.levelStars, activeChap.id);
-    const chapBoosters = this.getActiveBoosters();
     const chapterLevels = CAMPAIGN_LEVELS.filter(
       (lv) => lv.id >= activeChap.startLevel && lv.id <= activeChap.endLevel
     );
@@ -543,9 +535,6 @@ export class GameApp {
             ${activeChap.tip}
           </div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-            <button class="pixel-btn topbar-btn" id="btn-reset-chap-boosters" style="background:#fed7aa;" title="重置当前章节的所有道具为各2个">
-              🎒 重置本章道具 (🔨${chapBoosters.hammer} 🧤${chapBoosters.swap_glove} 🌀${chapBoosters.shuffle} ➕${chapBoosters.plus5})
-            </button>
             <button class="pixel-btn topbar-btn" id="btn-map-endless">
               🍗 无尽干饭模式
             </button>
@@ -561,11 +550,6 @@ export class GameApp {
     });
     document.getElementById('btn-map-endless')?.addEventListener('click', () => {
       this.startLevel(ENDLESS_LEVEL, true);
-    });
-    document.getElementById('btn-reset-chap-boosters')?.addEventListener('click', () => {
-      this.audio.playSelect();
-      this.resetChapterBoosters(activeChap.id);
-      this.renderUI();
     });
     this.root.querySelectorAll<HTMLElement>('.chapter-tab').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1417,13 +1401,16 @@ export class GameApp {
     // Check Campaign Victory!
     const allDone = this.goals.every((g) => g.current >= g.target);
     if (allDone) {
-      // Remaining moves bonus!
+      // Remaining moves bonus! Rewarding players generously for saving moves (1000 pts / move)
       if (this.movesLeft > 0) {
-        const bonus = this.movesLeft * 120;
-        this.score += bonus;
-        this.speechText = `过关啦！剩余 ${this.movesLeft} 步转化为 +${bonus} 美味加分！`;
+        const BONUS_PER_REMAINING_MOVE = 1000;
+        this.lastMovesBonus = this.movesLeft * BONUS_PER_REMAINING_MOVE;
+        this.score += this.lastMovesBonus;
+        this.speechText = `过关啦！剩余 ${this.movesLeft} 步转化为 +${this.lastMovesBonus} 美味大奖（每步 +${BONUS_PER_REMAINING_MOVE}）！`;
         this.movesLeft = 0;
         this.updateHudDom();
+      } else {
+        this.lastMovesBonus = 0;
       }
       const [s1, s2, s3] = this.currentLevel.starScores;
       this.earnedStars = this.score >= s3 ? 3 : this.score >= s2 ? 2 : this.score >= s1 ? 1 : 1;
@@ -1729,7 +1716,14 @@ export class GameApp {
           <div style="font-size:34px;color:#f59e0b;text-shadow:2px 2px 0 #2b1e16;margin:6px 0;">
             ${starsStr}
           </div>
-          <div style="font-weight:900;font-size:18px;margin-bottom:14px;">最终得分: ${this.score}</div>
+          <div style="font-weight:900;font-size:18px;margin-bottom:8px;">最终得分: ${this.score}</div>
+          ${
+            this.lastMovesBonus > 0
+              ? `<div style="font-size:13px;font-weight:900;color:#16a34a;background:#dcfce7;border:2px solid #22c55e;padding:4px 10px;margin-bottom:10px;display:inline-block;">
+                   🍗 剩余步数大奖: +${this.lastMovesBonus} 分！
+                 </div>`
+              : ''
+          }
           ${starGateHint}
           <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
             ${
@@ -1795,13 +1789,8 @@ export class GameApp {
           <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
             ${
               !this.usedContinue
-                ? `<button class="pixel-btn accent" id="modal-free-continue">🍗 卖萌续命 (+5步·限1次)</button>`
+                ? `<button class="pixel-btn" id="modal-free-continue">🍗 卖萌续命 (+5步·限1次)</button>`
                 : `<button class="pixel-btn" disabled>🍗 续命已用完</button>`
-            }
-            ${
-              !this.isEndless
-                ? `<button class="pixel-btn topbar-btn" id="modal-reset-boosters" style="background:#fde68a;" title="重置当前章节的所有道具为各2个">🎒 重置本章道具</button>`
-                : ''
             }
             ${
               this.isEndless
@@ -1824,11 +1813,6 @@ export class GameApp {
     });
     backdrop.querySelector('#modal-retry')?.addEventListener('click', () => {
       this.startLevel(this.currentLevel, this.isEndless);
-    });
-    backdrop.querySelector('#modal-reset-boosters')?.addEventListener('click', () => {
-      this.audio.playSelect();
-      this.resetChapterBoosters(this.selectedChapter);
-      this.renderUI();
     });
     backdrop.querySelector('#modal-next-lv')?.addEventListener('click', () => {
       const nextLv = CAMPAIGN_LEVELS.find((l) => l.id === this.currentLevel.id + 1);
