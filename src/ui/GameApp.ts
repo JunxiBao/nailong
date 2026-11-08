@@ -19,7 +19,11 @@ import {
   CAMPAIGN_LEVELS,
   createDefaultBoosters,
   ENDLESS_LEVEL,
+  getChapterStars,
+  isChapterUnlocked,
+  isLevelUnlocked,
   loadProgress,
+  REQUIRED_CHAPTER_STARS,
   saveProgress,
   SaveProgress,
 } from '../levels/campaignLevels';
@@ -90,7 +94,7 @@ export class GameApp {
 
   private screen: 'title' | 'map' | 'play' = 'title';
   private activeModal: 'none' | 'stickers' | 'rules' | 'leaderboard' | 'win' | 'lose' = 'none';
-  private selectedChapter = Math.min(3, Math.max(1, Math.ceil(this.progress.unlockedLevel / 10)));
+  private selectedChapter = 1;
   private leaderboard: LeaderboardState | null = null;
   private isSyncingScore = false;
   private nickSavedToast = '';
@@ -158,6 +162,7 @@ export class GameApp {
 
   constructor(root: HTMLElement) {
     this.root = root;
+    this.selectedChapter = this.getFurthestUnlockedChapter();
 
     // Lock full-screen viewport against mobile pull-to-refresh / vertical rubber-banding
     // while allowing scrollable containers (like leaderboard list, modal cards, sticker gallery) to scroll
@@ -257,6 +262,15 @@ export class GameApp {
     }
   }
 
+  private getFurthestUnlockedChapter(): number {
+    for (let c = CAMPAIGN_CHAPTERS.length; c >= 1; c--) {
+      if (isChapterUnlocked(this.progress.unlockedLevel, this.progress.levelStars, c)) {
+        return c;
+      }
+    }
+    return 1;
+  }
+
   private getStickerUrl(id: string): string {
     const found = this.stickers.find((s) => s.id === id);
     return found ? found.url : '/assets/stickers/nailong_happy.png';
@@ -339,10 +353,7 @@ export class GameApp {
 
     if (typeof document !== 'undefined' && document.body) {
       // Title screen & Endless mode use the player's furthest reached chapter background
-      const reachedChap = Math.min(
-        CAMPAIGN_CHAPTERS.length,
-        Math.max(1, Math.ceil(this.progress.unlockedLevel / 10))
-      );
+      const reachedChap = this.getFurthestUnlockedChapter();
       const chapId =
         this.screen === 'title' || (this.screen === 'play' && this.isEndless)
           ? reachedChap
@@ -428,10 +439,7 @@ export class GameApp {
     document.getElementById('btn-start-map')?.addEventListener('click', () => {
       this.audio.unlock();
       this.audio.playSelect();
-      this.selectedChapter = Math.min(
-        CAMPAIGN_CHAPTERS.length,
-        Math.max(1, Math.ceil(this.progress.unlockedLevel / 10))
-      );
+      this.selectedChapter = this.getFurthestUnlockedChapter();
       this.screen = 'map';
       this.renderUI();
     });
@@ -465,26 +473,30 @@ export class GameApp {
     const maxStars = CAMPAIGN_LEVELS.length * 3;
     const activeChap =
       CAMPAIGN_CHAPTERS.find((c) => c.id === this.selectedChapter) ?? CAMPAIGN_CHAPTERS[0];
+    const activeChapStars = getChapterStars(this.progress.levelStars, activeChap.id);
     const chapBoosters = this.getActiveBoosters();
     const chapterLevels = CAMPAIGN_LEVELS.filter(
       (lv) => lv.id >= activeChap.startLevel && lv.id <= activeChap.endLevel
     );
 
     const chapterTabsHtml = CAMPAIGN_CHAPTERS.map((chap) => {
-      const chapUnlocked = this.progress.unlockedLevel >= chap.startLevel;
+      const chapUnlocked = isChapterUnlocked(this.progress.unlockedLevel, this.progress.levelStars, chap.id);
       const isAct = chap.id === activeChap.id;
+      const prevStars = chap.id > 1 ? getChapterStars(this.progress.levelStars, chap.id - 1) : 0;
+      const curStars = getChapterStars(this.progress.levelStars, chap.id);
+      const lockHint = !chapUnlocked ? ` (需前章25★·现${prevStars}★)` : ` (${curStars}/30★)`;
       return `
         <button class="chapter-tab ${isAct ? 'active' : ''} ${chapUnlocked ? '' : 'chap-locked'}"
-                data-chap="${chap.id}">
-          ${chapUnlocked ? '' : '🔒 '}${chap.shortTitle}
+                data-chap="${chap.id}" title="${chapUnlocked ? `${chap.title} (${curStars}/30★)` : `需第${chap.id - 1}章获得≥25★（当前${prevStars}★）`}">
+          ${chapUnlocked ? '' : '🔒 '}${chap.shortTitle}${lockHint}
         </button>
       `;
     }).join('');
 
     const nodesHtml = chapterLevels
       .map((lv) => {
-        const unlocked = lv.id <= this.progress.unlockedLevel;
-        const isCurrent = lv.id === this.progress.unlockedLevel;
+        const unlocked = isLevelUnlocked(this.progress.unlockedLevel, this.progress.levelStars, lv.id);
+        const isCurrent = lv.id === this.progress.unlockedLevel && unlocked;
         const stars = this.progress.levelStars[lv.id] ?? 0;
         const starStr = unlocked ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '🔒 未解锁';
         const isBoss = Boolean(lv.bossMaxHp);
@@ -508,7 +520,7 @@ export class GameApp {
           <button class="pixel-btn secondary topbar-btn" id="btn-back-title">
             ◀ 首页
           </button>
-          <div class="map-title">${activeChap.title}</div>
+          <div class="map-title">${activeChap.title} (${activeChapStars}/30★)</div>
           <div class="star-pill">★ ${totalStars} / ${maxStars}</div>
         </div>
 
@@ -552,7 +564,19 @@ export class GameApp {
     this.root.querySelectorAll<HTMLElement>('.chapter-tab').forEach((btn) => {
       btn.addEventListener('click', () => {
         const chapId = Number(btn.dataset.chap);
-        if (chapId && chapId !== this.selectedChapter) {
+        if (!chapId) return;
+        const unlocked = isChapterUnlocked(this.progress.unlockedLevel, this.progress.levelStars, chapId);
+        if (!unlocked) {
+          this.audio.playInvalidSwap();
+          const prevStars = getChapterStars(this.progress.levelStars, chapId - 1);
+          const diff = Math.max(0, REQUIRED_CHAPTER_STARS - prevStars);
+          const tipEl = this.root.querySelector('.map-tip');
+          if (tipEl) {
+            tipEl.innerHTML = `<span style="color:#dc2626;font-weight:900;">🔒 解锁第 ${chapId} 章需要第 ${chapId - 1} 章累计获得 ≥25★（当前 ${prevStars}/25★，还差 ${diff}★）！快去补齐三星吧！</span>`;
+          }
+          return;
+        }
+        if (chapId !== this.selectedChapter) {
           this.audio.playSelect();
           this.selectedChapter = chapId;
           this.renderUI();
@@ -562,7 +586,20 @@ export class GameApp {
     this.root.querySelectorAll<HTMLElement>('.level-node').forEach((el) => {
       el.addEventListener('click', () => {
         const id = Number(el.dataset.lv);
-        if (id > this.progress.unlockedLevel) return;
+        const unlocked = isLevelUnlocked(this.progress.unlockedLevel, this.progress.levelStars, id);
+        if (!unlocked) {
+          this.audio.playInvalidSwap();
+          const chapId = Math.ceil(id / 10);
+          if (!isChapterUnlocked(this.progress.unlockedLevel, this.progress.levelStars, chapId)) {
+            const prevStars = getChapterStars(this.progress.levelStars, chapId - 1);
+            const diff = Math.max(0, REQUIRED_CHAPTER_STARS - prevStars);
+            const tipEl = this.root.querySelector('.map-tip');
+            if (tipEl) {
+              tipEl.innerHTML = `<span style="color:#dc2626;font-weight:900;">🔒 该关卡所在章节未解锁！需前一章获得 ≥25★（当前 ${prevStars}/25★，还差 ${diff}★）！</span>`;
+            }
+          }
+          return;
+        }
         const lv = CAMPAIGN_LEVELS.find((l) => l.id === id);
         if (lv) this.startLevel(lv, false);
       });
@@ -822,10 +859,10 @@ export class GameApp {
     if (bellyPct) bellyPct.textContent = `${clampedBelly}%`;
     if (bellyFill) bellyFill.style.width = `${clampedBelly}%`;
     if (bellyBtn) {
-      const ready = clampedBelly >= 100 && !this.isAnimating;
+      const ready = clampedBelly >= 100;
       bellyBtn.disabled = !ready;
-      bellyBtn.className = `pixel-btn belly-slam-btn ${clampedBelly >= 100 ? 'accent' : ''}`;
-      bellyBtn.textContent = clampedBelly >= 100 ? '💥 肚肚泰山压顶!' : '吃零食攒满放大招';
+      bellyBtn.className = `pixel-btn belly-slam-btn ${ready ? 'accent' : ''}`;
+      bellyBtn.textContent = ready ? '💥 肚肚泰山压顶!' : '吃零食攒满放大招';
     }
 
     if (this.currentLevel.bossMaxHp) {
@@ -1050,9 +1087,9 @@ export class GameApp {
     if (!res.valid) {
       this.audio.playInvalidSwap();
       this.speechText = '咦？这俩凑不成 3 连消除哦，弹回来啦~';
-      this.updateHudDom();
       await this.animateSwapPair(a, b, true);
       this.isAnimating = false;
+      this.updateHudDom();
       return;
     }
 
@@ -1085,8 +1122,8 @@ export class GameApp {
         this.renderGrid = this.engine.cloneGrid();
       }
       await this.postTurnChecks(res.consumedMove);
-      this.updateHudDom();
       this.isAnimating = false;
+      this.updateHudDom();
       return;
     }
 
@@ -1388,13 +1425,37 @@ export class GameApp {
       const lvId = this.currentLevel.id;
       this.progress.levelStars[lvId] = Math.max(this.progress.levelStars[lvId] ?? 0, this.earnedStars);
       this.progress.levelBestScores[lvId] = Math.max(this.progress.levelBestScores[lvId] ?? 0, this.score);
-      if (lvId >= this.progress.unlockedLevel && lvId < CAMPAIGN_LEVELS.length) {
-        this.progress.unlockedLevel = lvId + 1;
-        this.selectedChapter = Math.min(
-          CAMPAIGN_CHAPTERS.length,
-          Math.max(1, Math.ceil(this.progress.unlockedLevel / 10))
-        );
+
+      const currentChapId = Math.ceil(lvId / 10);
+      const isChapEnd = lvId === currentChapId * 10;
+      if (isChapEnd) {
+        const starsInChap = getChapterStars(this.progress.levelStars, currentChapId);
+        if (starsInChap >= REQUIRED_CHAPTER_STARS) {
+          if (lvId >= this.progress.unlockedLevel && lvId < CAMPAIGN_LEVELS.length) {
+            this.progress.unlockedLevel = lvId + 1;
+          }
+        }
+      } else {
+        if (lvId >= this.progress.unlockedLevel && lvId < CAMPAIGN_LEVELS.length) {
+          this.progress.unlockedLevel = lvId + 1;
+        }
       }
+
+      // Check if replaying an earlier level just pushed chapter stars to >= 25
+      for (let c = 1; c < CAMPAIGN_CHAPTERS.length; c++) {
+        const endLv = c * 10;
+        const nextLv = endLv + 1;
+        if (
+          (this.progress.levelStars[endLv] ?? 0) > 0 &&
+          getChapterStars(this.progress.levelStars, c) >= REQUIRED_CHAPTER_STARS
+        ) {
+          if (this.progress.unlockedLevel < nextLv) {
+            this.progress.unlockedLevel = nextLv;
+          }
+        }
+      }
+      this.selectedChapter = this.getFurthestUnlockedChapter();
+
       // Reward 1 random booster on 3-star clear!
       if (this.earnedStars === 3) {
         const chapBoosters = this.getActiveBoosters();
@@ -1638,6 +1699,23 @@ export class GameApp {
     } else if (this.activeModal === 'win') {
       const starsStr = '★'.repeat(this.earnedStars) + '☆'.repeat(3 - this.earnedStars);
       const nextLv = CAMPAIGN_LEVELS.find((l) => l.id === this.currentLevel.id + 1);
+      const isNextUnlocked = nextLv
+        ? isLevelUnlocked(this.progress.unlockedLevel, this.progress.levelStars, nextLv.id)
+        : false;
+      const currentChapId = Math.ceil(this.currentLevel.id / 10);
+      const isChapEnd = this.currentLevel.id === currentChapId * 10;
+      const curChapStars = getChapterStars(this.progress.levelStars, currentChapId);
+      const starGateHint =
+        isChapEnd && nextLv && curChapStars < REQUIRED_CHAPTER_STARS
+          ? `<div style="font-size:13px;font-weight:900;color:#dc2626;background:#fee2e2;border:2px solid #ef4444;padding:8px 12px;margin:10px 0;">
+               🔒 解锁第 ${currentChapId + 1} 章需要前一章获得 ≥25★（当前 ${curChapStars}/25★，还差 ${REQUIRED_CHAPTER_STARS - curChapStars}★）！<br/>请返回选关地图提升前面关卡的星级！
+             </div>`
+          : isChapEnd && nextLv && curChapStars >= REQUIRED_CHAPTER_STARS
+          ? `<div style="font-size:13px;font-weight:900;color:#16a34a;background:#dcfce7;border:2px solid #22c55e;padding:6px 12px;margin:10px 0;">
+               🌟 本章星级已达 ${curChapStars}★（≥25★）！第 ${currentChapId + 1} 章已成功解锁！
+             </div>`
+          : '';
+
       backdrop.innerHTML = `
         <div class="pixel-box modal-card">
           <img class="pixel-img" data-nailong-voice="1" style="cursor:pointer;" title="点击奶龙播放原声！" src="${this.getStickerUrl('nailong_happy')}" width="96" height="96" alt="win" />
@@ -1646,9 +1724,10 @@ export class GameApp {
             ${starsStr}
           </div>
           <div style="font-weight:900;font-size:18px;margin-bottom:14px;">最终得分: ${this.score}</div>
+          ${starGateHint}
           <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
             ${
-              nextLv
+              nextLv && isNextUnlocked
                 ? `<button class="pixel-btn" id="modal-next-lv">▶ 下一关 (${nextLv.name.split('·')[0]})</button>`
                 : ''
             }

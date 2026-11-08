@@ -30,7 +30,7 @@ export const CAMPAIGN_CHAPTERS: ChapterMeta[] = [
     endLevel: 20,
     bgGradient: 'linear-gradient(180deg, #e0f2fe 0%, #bae6fd 50%, #fce7f3 100%)',
     bgImage: '/assets/models/bg_chapter_2.png',
-    tip: '💡 第 15 关与第 20 关为【甜品湾 Boss 战】！',
+    tip: '💡 解锁本章需第1章获得≥25★！第 15 关与第 20 关为 Boss 战！',
   },
   {
     id: 3,
@@ -40,9 +40,52 @@ export const CAMPAIGN_CHAPTERS: ChapterMeta[] = [
     endLevel: 30,
     bgGradient: 'linear-gradient(180deg, #f3e8ff 0%, #e9d5ff 50%, #fef3c7 100%)',
     bgImage: '/assets/models/bg_chapter_3.png',
-    tip: '💡 第 25 关与第 30 关为【机械堡终极 Boss 战】！',
+    tip: '💡 解锁本章需第2章获得≥25★！第 25 关与第 30 关为终极 Boss 战！',
   },
 ];
+
+export const REQUIRED_CHAPTER_STARS = 25;
+
+export function getChapterStars(levelStars: Record<number, number>, chapterId: number): number {
+  const chap = CAMPAIGN_CHAPTERS.find((c) => c.id === chapterId);
+  if (!chap) return 0;
+  let sum = 0;
+  for (let lv = chap.startLevel; lv <= chap.endLevel; lv++) {
+    sum += levelStars[lv] ?? 0;
+  }
+  return sum;
+}
+
+export function isChapterUnlocked(
+  unlockedLevel: number,
+  levelStars: Record<number, number>,
+  chapterId: number
+): boolean {
+  if (chapterId <= 1) return true;
+  for (let c = 1; c < chapterId; c++) {
+    const prevChap = CAMPAIGN_CHAPTERS.find((ch) => ch.id === c);
+    if (!prevChap) return false;
+    const prevCompleted =
+      (levelStars[prevChap.endLevel] ?? 0) > 0 || unlockedLevel >= prevChap.endLevel + 1;
+    const prevStars = getChapterStars(levelStars, c);
+    if (!prevCompleted || prevStars < REQUIRED_CHAPTER_STARS) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function isLevelUnlocked(
+  unlockedLevel: number,
+  levelStars: Record<number, number>,
+  levelId: number
+): boolean {
+  const chapId = Math.ceil(levelId / 10);
+  if (!isChapterUnlocked(unlockedLevel, levelStars, chapId)) {
+    return false;
+  }
+  return levelId <= unlockedLevel;
+}
 
 function countLayoutLayers(layout: string[], kind: 'ice' | 'crate' | 'chain'): number {
   let sum = 0;

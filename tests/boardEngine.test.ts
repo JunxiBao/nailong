@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BoardEngine } from '../src/match3/BoardEngine';
-import { CAMPAIGN_LEVELS, createDefaultBoosters } from '../src/levels/campaignLevels';
+import {
+  CAMPAIGN_LEVELS,
+  createDefaultBoosters,
+  getChapterStars,
+  isChapterUnlocked,
+  isLevelUnlocked,
+  REQUIRED_CHAPTER_STARS,
+} from '../src/levels/campaignLevels';
 import { TileColor } from '../src/match3/types';
 import { MatchAudio, NAILONG_VOICE_CLIPS } from '../src/audio/MatchAudio';
 
@@ -317,5 +324,32 @@ describe('BoardEngine Match-3 Core Mechanics', () => {
     expect(b.swap_glove).toBe(2);
     expect(b.shuffle).toBe(2);
     expect(b.plus5).toBe(2);
+  });
+
+  it('enforces 25 stars in previous chapter to unlock next chapter', () => {
+    expect(REQUIRED_CHAPTER_STARS).toBe(25);
+
+    // Chapter 1 is always unlocked
+    expect(isChapterUnlocked(1, {}, 1)).toBe(true);
+    expect(isLevelUnlocked(1, {}, 1)).toBe(true);
+
+    // Chapter 2 requires completing level 10 and obtaining >= 25 stars in chapter 1
+    const lowStarsMap: Record<number, number> = {};
+    for (let i = 1; i <= 10; i++) {
+      lowStarsMap[i] = 2; // total 20 stars < 25
+    }
+    // Completed level 10, unlockedLevel = 11, but only 20 stars
+    expect(getChapterStars(lowStarsMap, 1)).toBe(20);
+    expect(isChapterUnlocked(11, lowStarsMap, 2)).toBe(false);
+    expect(isLevelUnlocked(11, lowStarsMap, 11)).toBe(false);
+
+    // Now raise stars in chapter 1 to 25 stars (5 levels 3-star, 5 levels 2-star)
+    const highStarsMap: Record<number, number> = { ...lowStarsMap };
+    for (let i = 1; i <= 5; i++) {
+      highStarsMap[i] = 3; // total 25 stars
+    }
+    expect(getChapterStars(highStarsMap, 1)).toBe(25);
+    expect(isChapterUnlocked(11, highStarsMap, 2)).toBe(true);
+    expect(isLevelUnlocked(11, highStarsMap, 11)).toBe(true);
   });
 });
