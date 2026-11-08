@@ -1372,12 +1372,8 @@ export class GameApp {
         this.movesLeft += 4;
         this.endlessStepGap += 450;
         this.endlessNextMilestone += this.endlessStepGap;
-        const gotHammer = this.endlessTier % 2 === 0;
-        if (gotHammer) {
-          this.endlessBoosters.hammer++;
-        }
         this.audio.playVictory();
-        this.speechText = `干饭突破第 ${this.endlessTier} 档里程碑！奖励 +4 步${gotHammer ? '与小七木槌' : ''}！`;
+        this.speechText = `干饭突破第 ${this.endlessTier} 档里程碑！奖励 +4 步！`;
       }
       if (this.score > this.progress.endlessBestScore) {
         this.progress.endlessBestScore = this.score;
@@ -1823,17 +1819,22 @@ export class GameApp {
       this.screen = this.isEndless ? 'title' : 'map';
       this.renderUI();
     });
-    backdrop.querySelector('#modal-free-continue')?.addEventListener('click', () => {
+    backdrop.querySelector('#modal-free-continue')?.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
       if (this.usedContinue) return;
       this.usedContinue = true;
+      const btn = ev.currentTarget as HTMLButtonElement | null;
+      if (btn) btn.disabled = true;
       this.audio.unlock();
       const clip = this.audio.playNailongVoice();
-      this.movesLeft += 5;
+      this.movesLeft = 5;
       this.activeModal = 'none';
       this.nailongPose = 'pat_belly';
       this.poseTimer = clip.durationMs / 1000;
       this.speechText = `${clip.subtitle} 抓住这 5 步一鼓作气过关吧！`;
       this.renderUI();
+      this.updateHudDom();
     });
     backdrop.querySelector('#modal-open-lb')?.addEventListener('click', () => {
       this.audio.playSelect();
