@@ -13,6 +13,7 @@ import {
 import { TileColor } from '../src/match3/types';
 import { MatchAudio, NAILONG_VOICE_CLIPS } from '../src/audio/MatchAudio';
 import {
+  drawHighDetailBombExplosion,
   drawHighDetailChain,
   drawHighDetailCrate,
   drawHighDetailIce,
@@ -406,5 +407,10 @@ describe('BoardEngine Match-3 Core Mechanics', () => {
     expect(() => drawHighDetailLaser(dummyCtx, 32, 32, 512, 64, 'line_h', 0.2, 1.0)).not.toThrow();
     expect(() => drawHighDetailLaser(dummyCtx, 32, 32, 512, 64, 'line_v', 0.5, 2.0)).not.toThrow();
     expect(() => drawHighDetailLaser(dummyCtx, 32, 32, 512, 64, 'cross3', 0.8, 3.0)).not.toThrow();
+
+    // Test Bomb Explosions (bomb3, bomb5, belly_slam)
+    expect(() => drawHighDetailBombExplosion(dummyCtx, 64, 64, 64, 'bomb3', 0.3, 1.5)).not.toThrow();
+    expect(() => drawHighDetailBombExplosion(dummyCtx, 64, 64, 64, 'bomb5', 0.6, 2.5)).not.toThrow();
+    expect(() => drawHighDetailBombExplosion(dummyCtx, 64, 64, 64, 'belly_slam', 0.2, 0.5)).not.toThrow();
   });
 });

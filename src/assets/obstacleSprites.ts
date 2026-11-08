@@ -587,3 +587,177 @@ export function drawHighDetailLaser(
 
   ctx.restore();
 }
+
+/**
+ * Draws a high-detail 16-bit retro arcade bomb explosion.
+ * @param kind 'bomb3' (3x3 fiery blast), 'bomb5' (5x5 mega nuclear combo), or 'belly_slam' (bouncy golden cosmic slam)
+ * @param t Progress from 0 (instant detonation) to 1 (fully dissipated)
+ */
+export function drawHighDetailBombExplosion(
+  ctx: CanvasRenderingContext2D,
+  ox: number,
+  oy: number,
+  cellPx: number,
+  kind: 'bomb3' | 'bomb5' | 'belly_slam',
+  t: number,
+  timeSec: number
+): void {
+  ctx.save();
+
+  const isBelly = kind === 'belly_slam';
+  const isMega = kind === 'bomb5';
+  const maxR = isMega ? cellPx * 3.6 : isBelly ? cellPx * 3.2 : cellPx * 2.1;
+
+  // Explosive expansion curve: violent early explosion that decelerates
+  const expandEased = 1 - Math.pow(1 - t, 3);
+  const currentR = Math.max(8, maxR * expandEased);
+  const alpha = Math.max(0, 1 - Math.pow(t, 1.4));
+
+  // --- 1. Outer Shockwave Rings (Expanding high-energy compression wavefronts) ---
+  ctx.save();
+  const ringCount = isMega ? 2 : 1;
+  for (let rIdx = 0; rIdx < ringCount; rIdx++) {
+    const ringT = Math.min(1, t * (1 + rIdx * 0.28));
+    const ringRad = maxR * (0.2 + ringT * 0.95);
+    const ringWidth = Math.max(2, (isMega ? 11 : 7) * (1 - ringT));
+    const ringAlpha = Math.max(0, (1 - ringT) * 0.9);
+
+    ctx.strokeStyle = isBelly
+      ? `rgba(254, 240, 138, ${ringAlpha})`
+      : rIdx === 0
+      ? `rgba(255, 235, 59, ${ringAlpha})`
+      : `rgba(255, 87, 34, ${ringAlpha})`;
+    ctx.lineWidth = ringWidth;
+
+    ctx.beginPath();
+    ctx.arc(ox, oy, ringRad, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Secondary inner dashed ripple
+    ctx.strokeStyle = isBelly ? '#FFFFFF' : '#FF7043';
+    ctx.lineWidth = Math.max(1, ringWidth * 0.45);
+    ctx.beginPath();
+    ctx.arc(ox, oy, ringRad * 0.86, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // --- 2. Multi-Lobe Fireball / Plasma Cloud Body ---
+  // A churning cluster of 8-12 expanding fireball lobes with sin/cos perturbation
+  const lobeCount = isMega ? 12 : 8;
+  const lobeBaseRad = currentR * 0.58;
+
+  for (let i = 0; i < lobeCount; i++) {
+    const angle = (i * Math.PI * 2) / lobeCount + (isMega ? 0.2 : 0);
+    const distScale = 0.65 + 0.35 * Math.sin(i * 3 + timeSec * 15);
+    const lobeDist = currentR * 0.5 * distScale * (0.4 + expandEased * 0.6);
+    const lx = ox + Math.cos(angle) * lobeDist;
+    const ly = oy + Math.sin(angle) * lobeDist;
+    const lRadius = Math.max(6, lobeBaseRad * (1 - t * 0.45));
+
+    // Outer flame lobe layer
+    const lobeGrad = ctx.createRadialGradient(lx, ly, 1, lx, ly, lRadius);
+    if (isBelly) {
+      lobeGrad.addColorStop(0, '#FFFFFF');
+      lobeGrad.addColorStop(0.3, '#FDE047');
+      lobeGrad.addColorStop(0.7, '#F59E0B');
+      lobeGrad.addColorStop(1, 'rgba(217, 119, 6, 0)');
+    } else {
+      lobeGrad.addColorStop(0, '#FFFBEB');
+      lobeGrad.addColorStop(0.25, '#FEF08A');
+      lobeGrad.addColorStop(0.55, isMega ? '#FF3D00' : '#F97316');
+      lobeGrad.addColorStop(0.85, isMega ? '#991B1B' : '#DC2626');
+      lobeGrad.addColorStop(1, 'rgba(124, 45, 18, 0)');
+    }
+
+    ctx.fillStyle = lobeGrad;
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.arc(lx, ly, lRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dark smoke puffs in late stage (t > 0.4)
+    if (t > 0.4 && !isBelly) {
+      const smokeR = lRadius * 0.65 * (t - 0.4) * 1.6;
+      ctx.fillStyle = 'rgba(43, 30, 22, 0.45)';
+      ctx.beginPath();
+      ctx.arc(lx + 4, ly - 4, smokeR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // --- 3. Central Blazing Core Plasma ---
+  if (t < 0.65) {
+    const coreAlpha = Math.max(0, 1 - t / 0.65);
+    const coreR = Math.max(8, currentR * 0.48 * (1 - t * 0.5));
+
+    const coreGrad = ctx.createRadialGradient(ox, oy, 1, ox, oy, coreR);
+    coreGrad.addColorStop(0, '#FFFFFF');
+    coreGrad.addColorStop(0.4, isBelly ? '#FEF08A' : '#FFF59D');
+    coreGrad.addColorStop(0.8, isBelly ? '#F59E0B' : '#FF6B00');
+    coreGrad.addColorStop(1, 'rgba(255, 61, 0, 0)');
+
+    ctx.globalAlpha = coreAlpha;
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(ox, oy, coreR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 8-Point Diffraction Spikes from core
+    const spikeLen = Math.round(coreR * (isMega ? 2.2 : 1.7));
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = Math.max(1, 4 * (1 - t / 0.65));
+
+    ctx.beginPath();
+    ctx.moveTo(ox - spikeLen, oy);
+    ctx.lineTo(ox + spikeLen, oy);
+    ctx.moveTo(ox, oy - spikeLen);
+    ctx.lineTo(ox, oy + spikeLen);
+    ctx.stroke();
+
+    ctx.lineWidth = Math.max(1, 2 * (1 - t / 0.65));
+    const diagSpike = Math.round(spikeLen * 0.7);
+    ctx.beginPath();
+    ctx.moveTo(ox - diagSpike, oy - diagSpike);
+    ctx.lineTo(ox + diagSpike, oy + diagSpike);
+    ctx.moveTo(ox + diagSpike, oy - diagSpike);
+    ctx.lineTo(ox - diagSpike, oy + diagSpike);
+    ctx.stroke();
+  }
+
+  // --- 4. High-Velocity Flying Shrapnel Sparks & Comic Star Embers ---
+  const sparkCount = isMega ? 24 : isBelly ? 18 : 14;
+  for (let s = 0; s < sparkCount; s++) {
+    const sAngle = s * 2.39996 + (s % 3) * 0.2;
+    const sSpeed = (isMega ? 1.4 : 1.1) * (0.8 + (s % 5) * 0.15);
+    const sDist = maxR * expandEased * sSpeed;
+    const sx = ox + Math.cos(sAngle) * sDist;
+    const sy = oy + Math.sin(sAngle) * sDist;
+
+    const sSize = Math.max(2, Math.round((isMega ? 7 : 5) * (1 - t)));
+    const sparkAlpha = Math.max(0, 1 - t * 1.1);
+    ctx.globalAlpha = sparkAlpha;
+
+    ctx.fillStyle =
+      s % 4 === 0
+        ? '#FFFFFF'
+        : s % 4 === 1
+        ? '#FEF08A'
+        : isBelly
+        ? '#F59E0B'
+        : s % 4 === 2
+        ? '#FF7043'
+        : '#FF1744';
+
+    ctx.fillRect(Math.round(sx - sSize / 2), Math.round(sy - sSize / 2), sSize, sSize);
+
+    if (sSize >= 3) {
+      const trailDx = Math.cos(sAngle) * (sSize * 1.6);
+      const trailDy = Math.sin(sAngle) * (sSize * 1.6);
+      ctx.fillStyle = isBelly ? '#FDE047' : '#F97316';
+      ctx.fillRect(Math.round(sx - trailDx), Math.round(sy - trailDy), sSize * 0.6, sSize * 0.6);
+    }
+  }
+
+  ctx.restore();
+}

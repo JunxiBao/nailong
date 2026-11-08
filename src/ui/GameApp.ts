@@ -15,6 +15,7 @@ import {
   renderXiaoQiHelper,
 } from '../assets/pixelSprites';
 import {
+  drawHighDetailBombExplosion,
   drawHighDetailChain,
   drawHighDetailCrate,
   drawHighDetailIce,
@@ -1174,7 +1175,10 @@ export class GameApp {
       this.audio.playComboMatch(step.comboIndex);
       if (step.blasts.length > 0) {
         this.audio.playSpecialBlast(step.blasts[0].kind);
-        this.boardShake = Math.max(this.boardShake, step.blasts[0].kind === 'rainbow_all' ? 16 : 8);
+        const bk = step.blasts[0].kind;
+        const shake =
+          bk === 'bomb5' || bk === 'belly_slam' ? 22 : bk === 'bomb3' ? 14 : bk === 'rainbow_all' ? 16 : 8;
+        this.boardShake = Math.max(this.boardShake, shake);
       }
 
       if (step.comboIndex >= 2 || step.blasts.length > 0) {
@@ -1183,7 +1187,8 @@ export class GameApp {
 
       // 2. Register blast visuals, particles & flying snacks toward Nailong!
       for (const b of step.blasts) {
-        this.activeBlasts.push({ event: b, timer: 0, duration: 0.34 });
+        const duration = b.kind === 'bomb5' || b.kind === 'belly_slam' ? 0.52 : b.kind === 'bomb3' ? 0.44 : 0.36;
+        this.activeBlasts.push({ event: b, timer: 0, duration });
       }
 
       this.clearingSet.clear();
@@ -2201,11 +2206,7 @@ export class GameApp {
       if (ev.kind === 'line_h' || ev.kind === 'line_v' || ev.kind === 'cross3') {
         drawHighDetailLaser(ctx, ox, oy, BOARD_PX, CELL_PX, ev.kind, t, timeSec);
       } else if (ev.kind === 'bomb3' || ev.kind === 'bomb5' || ev.kind === 'belly_slam') {
-        const maxR = ev.kind === 'bomb3' ? CELL_PX * 1.8 : CELL_PX * 3.2;
-        const rad = maxR * t;
-        ctx.strokeStyle = '#FFEA00';
-        ctx.lineWidth = 10 * (1 - t);
-        ctx.strokeRect(ox - rad, oy - rad, rad * 2, rad * 2);
+        drawHighDetailBombExplosion(ctx, ox, oy, CELL_PX, ev.kind, t, timeSec);
       } else if (ev.kind === 'rainbow_rays' && ev.targets) {
         ctx.strokeStyle = '#FACC15';
         ctx.lineWidth = 5;

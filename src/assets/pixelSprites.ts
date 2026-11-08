@@ -146,14 +146,49 @@ export function drawSpecialBadge(
     ctx.fillRect(x + size / 2 - 6, y + Math.max(1, 3 - pulse), 12, 5);
     ctx.fillRect(x + size / 2 - 6, y + size - 8 + Math.max(0, pulse), 12, 5);
   } else if (special === 'bomb') {
+    // 1. Pulsing fiery warning border
+    const bombPulse = Math.sin(timeSec * 10) * 1.5;
     ctx.strokeStyle = '#FF3D00';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(x + 4, y + 4, size - 8, size - 8);
-    ctx.strokeStyle = '#FFF59D';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x + 8, y + 8, size - 16, size - 16);
-    ctx.fillStyle = (Math.floor(timeSec * 10) & 1) === 0 ? '#FFFFFF' : '#FFEA00';
-    ctx.fillRect(x + size - 11, y + 3, 7, 7);
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x + 3 - bombPulse * 0.5, y + 3 - bombPulse * 0.5, size - 6 + bombPulse, size - 6 + bombPulse);
+
+    // 2. Corner warning teeth
+    ctx.fillStyle = '#FFEA00';
+    ctx.fillRect(x + 3, y + 3, 5, 5);
+    ctx.fillRect(x + size - 8, y + 3, 5, 5);
+    ctx.fillRect(x + 3, y + size - 8, 5, 5);
+    ctx.fillRect(x + size - 8, y + size - 8, 5, 5);
+
+    // 3. High-detail retro iron bomb badge (top-right corner)
+    const bx = x + size - 19;
+    const by = y + 3;
+
+    // Dark cast-iron bomb sphere
+    ctx.fillStyle = '#0F172A';
+    ctx.beginPath();
+    ctx.arc(bx + 7, by + 9, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Metallic highlight ring
+    ctx.strokeStyle = '#64748B';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(bx + 6, by + 8, 5, -Math.PI * 0.8, -Math.PI * 0.2);
+    ctx.stroke();
+
+    // White specular glint
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(bx + 4, by + 6, 2, 2);
+
+    // Brass fuse cap
+    ctx.fillStyle = '#F59E0B';
+    ctx.fillRect(bx + 5, by + 1, 4, 3);
+
+    // Sizzling spark on the fuse (flickering animated star)
+    const sparkPhase = Math.floor(timeSec * 14) % 3;
+    ctx.fillStyle = sparkPhase === 0 ? '#FFFFFF' : sparkPhase === 1 ? '#FFEA00' : '#FF5722';
+    ctx.fillRect(bx + 6, by - 2, 3, 3);
+    ctx.fillRect(bx + 5, by - 1, 5, 1);
   }
   ctx.restore();
 }
