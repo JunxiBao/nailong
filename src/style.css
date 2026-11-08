@@ -32,32 +32,30 @@ body {
   overflow: hidden;
   overscroll-behavior: none;
   touch-action: manipulation;
-  font-family: 'Courier New', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', monospace;
-  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', system-ui, sans-serif;
+  background:
+    url('/assets/models/bg_chapter_1.png') center bottom / cover no-repeat,
+    linear-gradient(180deg, #67c6f7 0%, #bfe9ff 58%, #a3e635 58.5%, #65a30d 100%);
   image-rendering: pixelated;
   color: var(--outline-dark);
 }
 
-/* Single background layer on the root element, switched per chapter */
-html {
+html.theme-chap-1,
+body.theme-chap-1 {
   background:
     url('/assets/models/bg_chapter_1.png') center bottom / cover no-repeat,
     linear-gradient(180deg, #67c6f7 0%, #bfe9ff 58%, #a3e635 58.5%, #65a30d 100%);
 }
 
-html.theme-chap-1 {
-  background:
-    url('/assets/models/bg_chapter_1.png') center bottom / cover no-repeat,
-    linear-gradient(180deg, #67c6f7 0%, #bfe9ff 58%, #a3e635 58.5%, #65a30d 100%);
-}
-
-html.theme-chap-2 {
+html.theme-chap-2,
+body.theme-chap-2 {
   background:
     url('/assets/models/bg_chapter_2.png') center bottom / cover no-repeat,
     linear-gradient(180deg, #bae6fd 0%, #fce7f3 58%, #7dd3fc 100%);
 }
 
-html.theme-chap-3 {
+html.theme-chap-3,
+body.theme-chap-3 {
   background:
     url('/assets/models/bg_chapter_3.png') center bottom / cover no-repeat,
     linear-gradient(180deg, #26124e 0%, #4c1d95 58%, #31244e 100%);
@@ -569,7 +567,10 @@ img.pixel-img {
   gap: 5px;
   max-height: 240px;
   overflow-y: auto;
-  padding: 4px 0;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  padding: 4px 2px;
   text-align: left;
 }
 
@@ -966,6 +967,17 @@ img.pixel-img {
     border-width: 3px;
     font-size: 14px;
     padding: 8px 12px;
+  }
+
+  .pixel-btn.accent {
+    text-shadow: 1px 1px 0 var(--outline-dark);
+  }
+
+  .leaderboard-list {
+    max-height: clamp(160px, 42vh, 260px);
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   .hide-xs {

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BoardEngine } from '../src/match3/BoardEngine';
-import { CAMPAIGN_LEVELS } from '../src/levels/campaignLevels';
+import { CAMPAIGN_LEVELS, createDefaultBoosters } from '../src/levels/campaignLevels';
 import { TileColor } from '../src/match3/types';
 import { MatchAudio, NAILONG_VOICE_CLIPS } from '../src/audio/MatchAudio';
 
@@ -309,5 +309,13 @@ describe('BoardEngine Match-3 Core Mechanics', () => {
     const shuffled = engine.ensurePlayableBoard();
     expect(shuffled).toBe(true);
     expect(engine.findValidMoves().length).toBeGreaterThan(0);
+  });
+
+  it('manages independent chapter boosters and default booster state', () => {
+    const b = createDefaultBoosters();
+    expect(b.hammer).toBe(2);
+    expect(b.swap_glove).toBe(2);
+    expect(b.shuffle).toBe(2);
+    expect(b.plus5).toBe(2);
   });
 });

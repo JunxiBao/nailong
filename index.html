@@ -10,8 +10,10 @@
         var save = JSON.parse(localStorage.getItem('nailong_match3_save_v1') || '{}');
         var chap = Math.min(3, Math.max(1, Math.ceil((Number(save.unlockedLevel) || 1) / 10)));
         document.documentElement.className = 'theme-chap-' + chap;
+        if (document.body) document.body.className = 'theme-chap-' + chap;
       } catch (e) {
         document.documentElement.className = 'theme-chap-1';
+        if (document.body) document.body.className = 'theme-chap-1';
       }
     </script>
   </head>

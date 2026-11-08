@@ -911,6 +911,17 @@ export const ENDLESS_LEVEL: LevelConfig = {
   layout: L2_LAYOUT,
 };
 
+export const DEFAULT_BOOSTERS: Record<BoosterType, number> = {
+  hammer: 2,
+  swap_glove: 2,
+  shuffle: 2,
+  plus5: 2,
+};
+
+export function createDefaultBoosters(): Record<BoosterType, number> {
+  return { ...DEFAULT_BOOSTERS };
+}
+
 export interface SaveProgress {
   playerId: string;
   playerNickname: string;
@@ -919,6 +930,7 @@ export interface SaveProgress {
   levelBestScores: Record<number, number>;
   endlessBestScore: number;
   boosters: Record<BoosterType, number>;
+  chapterBoosters?: Record<number, Record<BoosterType, number>>;
 }
 
 const STORAGE_KEY = 'nailong_match3_save_v1';
@@ -929,6 +941,11 @@ function generatePlayerId(): string {
 }
 
 export function loadProgress(): SaveProgress {
+  const fallbackChapterBoosters: Record<number, Record<BoosterType, number>> = {
+    1: createDefaultBoosters(),
+    2: createDefaultBoosters(),
+    3: createDefaultBoosters(),
+  };
   const fallback: SaveProgress = {
     playerId: generatePlayerId(),
     playerNickname: '',
@@ -936,12 +953,8 @@ export function loadProgress(): SaveProgress {
     levelStars: {},
     levelBestScores: {},
     endlessBestScore: 0,
-    boosters: {
-      hammer: 2,
-      swap_glove: 2,
-      shuffle: 2,
-      plus5: 2,
-    },
+    boosters: createDefaultBoosters(),
+    chapterBoosters: fallbackChapterBoosters,
   };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -950,6 +963,13 @@ export function loadProgress(): SaveProgress {
       return fallback;
     }
     const parsed = JSON.parse(raw);
+    const chapterBoosters: Record<number, Record<BoosterType, number>> = {};
+    for (let c = 1; c <= 3; c++) {
+      chapterBoosters[c] = {
+        ...createDefaultBoosters(),
+        ...(parsed.chapterBoosters?.[c] ?? {}),
+      };
+    }
     const merged: SaveProgress = {
       ...fallback,
       ...parsed,
@@ -959,6 +979,7 @@ export function loadProgress(): SaveProgress {
           : fallback.playerId,
       playerNickname: typeof parsed.playerNickname === 'string' ? parsed.playerNickname : '',
       boosters: { ...fallback.boosters, ...(parsed.boosters ?? {}) },
+      chapterBoosters,
     };
     if (merged.playerId !== parsed.playerId) {
       saveProgress(merged);

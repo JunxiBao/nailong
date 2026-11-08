@@ -17,6 +17,7 @@ import {
 import {
   CAMPAIGN_CHAPTERS,
   CAMPAIGN_LEVELS,
+  createDefaultBoosters,
   ENDLESS_LEVEL,
   loadProgress,
   saveProgress,
@@ -25,6 +26,7 @@ import {
 import { BoardEngine } from '../match3/BoardEngine';
 import {
   BlastEffectEvent,
+  BoosterType,
   CascadeStep,
   CellState,
   Coord,
@@ -96,6 +98,7 @@ export class GameApp {
   // Gameplay state
   private currentLevel: LevelConfig = CAMPAIGN_LEVELS[0];
   private isEndless = false;
+  private endlessBoosters: Record<BoosterType, number> = createDefaultBoosters();
   private endlessNextMilestone = 3000;
   private endlessStepGap = 3000;
   private endlessTier = 0;
@@ -157,13 +160,19 @@ export class GameApp {
     this.root = root;
 
     // Lock full-screen viewport against mobile pull-to-refresh / vertical rubber-banding
+    // while allowing scrollable containers (like leaderboard list, modal cards, sticker gallery) to scroll
     document.addEventListener(
       'touchmove',
       (ev) => {
-        const target = ev.target as HTMLElement | null;
-        const modal = target?.closest('.modal-card') as HTMLElement | null;
-        if (modal && modal.scrollHeight > modal.clientHeight) {
-          return;
+        let el = ev.target as HTMLElement | null;
+        while (el && el !== document.body && el !== document.documentElement) {
+          if (el.scrollHeight > el.clientHeight) {
+            const overflowY = window.getComputedStyle(el).overflowY;
+            if (overflowY === 'auto' || overflowY === 'scroll') {
+              return; // Allow touch scrolling inside any scrollable container
+            }
+          }
+          el = el.parentElement;
         }
         ev.preventDefault();
       },
@@ -260,6 +269,7 @@ export class GameApp {
     if (!endless) {
       this.selectedChapter = Math.min(CAMPAIGN_CHAPTERS.length, Math.max(1, Math.ceil(level.id / 10)));
     } else {
+      this.endlessBoosters = createDefaultBoosters();
       this.refreshGlobalLeaderboard();
     }
     this.endlessNextMilestone = 3000;
@@ -297,6 +307,29 @@ export class GameApp {
     this.renderUI();
   }
 
+  private getActiveBoosters(): Record<BoosterType, number> {
+    if (this.isEndless) {
+      return this.endlessBoosters;
+    }
+    const chap = this.selectedChapter || 1;
+    if (!this.progress.chapterBoosters) {
+      this.progress.chapterBoosters = {};
+    }
+    if (!this.progress.chapterBoosters[chap]) {
+      this.progress.chapterBoosters[chap] = createDefaultBoosters();
+    }
+    return this.progress.chapterBoosters[chap];
+  }
+
+  private resetChapterBoosters(chapId: number): void {
+    if (!this.progress.chapterBoosters) {
+      this.progress.chapterBoosters = {};
+    }
+    this.progress.chapterBoosters[chapId] = createDefaultBoosters();
+    this.progress.boosters = { ...this.progress.chapterBoosters[chapId] };
+    saveProgress(this.progress);
+  }
+
   private renderUI(): void {
     this.titleMascotCanvas = null;
     this.playMascotCanvas = null;
@@ -314,6 +347,7 @@ export class GameApp {
         this.screen === 'title' || (this.screen === 'play' && this.isEndless)
           ? reachedChap
           : Math.min(3, Math.max(1, this.selectedChapter));
+      document.body.className = `theme-chap-${chapId}`;
       document.documentElement.className = `theme-chap-${chapId}`;
     }
 
@@ -431,6 +465,7 @@ export class GameApp {
     const maxStars = CAMPAIGN_LEVELS.length * 3;
     const activeChap =
       CAMPAIGN_CHAPTERS.find((c) => c.id === this.selectedChapter) ?? CAMPAIGN_CHAPTERS[0];
+    const chapBoosters = this.getActiveBoosters();
     const chapterLevels = CAMPAIGN_LEVELS.filter(
       (lv) => lv.id >= activeChap.startLevel && lv.id <= activeChap.endLevel
     );
@@ -489,9 +524,14 @@ export class GameApp {
           <div class="map-tip">
             ${activeChap.tip}
           </div>
-          <button class="pixel-btn topbar-btn" id="btn-map-endless">
-            🍗 无尽干饭模式
-          </button>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+            <button class="pixel-btn topbar-btn" id="btn-reset-chap-boosters" style="background:#fed7aa;" title="重置当前章节的所有道具为各2个">
+              🎒 重置本章道具 (🔨${chapBoosters.hammer} 🧤${chapBoosters.swap_glove} 🌀${chapBoosters.shuffle} ➕${chapBoosters.plus5})
+            </button>
+            <button class="pixel-btn topbar-btn" id="btn-map-endless">
+              🍗 无尽干饭模式
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -503,6 +543,11 @@ export class GameApp {
     });
     document.getElementById('btn-map-endless')?.addEventListener('click', () => {
       this.startLevel(ENDLESS_LEVEL, true);
+    });
+    document.getElementById('btn-reset-chap-boosters')?.addEventListener('click', () => {
+      this.audio.playSelect();
+      this.resetChapterBoosters(activeChap.id);
+      this.renderUI();
     });
     this.root.querySelectorAll<HTMLElement>('.chapter-tab').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -528,6 +573,7 @@ export class GameApp {
     const star3 = this.currentLevel.starScores[2];
     const scorePct = Math.min(100, Math.round((this.score / star3) * 100));
     const bellyReady = this.bellyEnergy >= 100;
+    const boosters = this.getActiveBoosters();
 
     this.root.innerHTML = `
       <div class="play-screen-wrap">
@@ -650,23 +696,23 @@ export class GameApp {
                 <span class="xiaoqi-tag">小七</span>
               </div>
               <button class="booster-btn ${this.activeBooster === 'hammer' ? 'active' : ''}" id="boost-hammer"
-                      ${this.progress.boosters.hammer <= 0 ? 'disabled' : ''}>
-                <span>🔨 木槌(${this.progress.boosters.hammer})</span>
+                      ${boosters.hammer <= 0 ? 'disabled' : ''}>
+                <span>🔨 木槌(${boosters.hammer})</span>
                 <span class="booster-sub">敲碎任意单格</span>
               </button>
               <button class="booster-btn ${this.activeBooster === 'swap_glove' ? 'active' : ''}" id="boost-glove"
-                      ${this.progress.boosters.swap_glove <= 0 ? 'disabled' : ''}>
-                <span>🧤 手套(${this.progress.boosters.swap_glove})</span>
+                      ${boosters.swap_glove <= 0 ? 'disabled' : ''}>
+                <span>🧤 手套(${boosters.swap_glove})</span>
                 <span class="booster-sub">无视规则互换</span>
               </button>
               <button class="booster-btn" id="boost-shuffle"
-                      ${this.progress.boosters.shuffle <= 0 ? 'disabled' : ''}>
-                <span>🌀 重排(${this.progress.boosters.shuffle})</span>
+                      ${boosters.shuffle <= 0 ? 'disabled' : ''}>
+                <span>🌀 重排(${boosters.shuffle})</span>
                 <span class="booster-sub">不耗步洗牌</span>
               </button>
               <button class="booster-btn" id="boost-plus5"
-                      ${this.progress.boosters.plus5 <= 0 ? 'disabled' : ''}>
-                <span>➕ +5步(${this.progress.boosters.plus5})</span>
+                      ${boosters.plus5 <= 0 ? 'disabled' : ''}>
+                <span>➕ +5步(${boosters.plus5})</span>
                 <span class="booster-sub">立刻增加5步</span>
               </button>
             </div>
@@ -853,7 +899,8 @@ export class GameApp {
     });
 
     document.getElementById('boost-hammer')?.addEventListener('click', () => {
-      if (this.isAnimating || this.progress.boosters.hammer <= 0) return;
+      const b = this.getActiveBoosters();
+      if (this.isAnimating || b.hammer <= 0) return;
       this.audio.playSelect();
       this.xiaoqiCheerTimer = 1.4;
       this.activeBooster = this.activeBooster === 'hammer' ? null : 'hammer';
@@ -864,7 +911,8 @@ export class GameApp {
     });
 
     document.getElementById('boost-glove')?.addEventListener('click', () => {
-      if (this.isAnimating || this.progress.boosters.swap_glove <= 0) return;
+      const b = this.getActiveBoosters();
+      if (this.isAnimating || b.swap_glove <= 0) return;
       this.audio.playSelect();
       this.xiaoqiCheerTimer = 1.4;
       this.activeBooster = this.activeBooster === 'swap_glove' ? null : 'swap_glove';
@@ -876,10 +924,14 @@ export class GameApp {
     });
 
     document.getElementById('boost-shuffle')?.addEventListener('click', async () => {
-      if (this.isAnimating || this.progress.boosters.shuffle <= 0) return;
+      const b = this.getActiveBoosters();
+      if (this.isAnimating || b.shuffle <= 0) return;
       this.isAnimating = true;
-      this.progress.boosters.shuffle--;
-      saveProgress(this.progress);
+      b.shuffle--;
+      if (!this.isEndless) {
+        this.progress.boosters = { ...b };
+        saveProgress(this.progress);
+      }
       this.renderUI();
       this.isAnimating = true;
       await this.performAutoShuffleVisual(true, true);
@@ -888,9 +940,13 @@ export class GameApp {
     });
 
     document.getElementById('boost-plus5')?.addEventListener('click', () => {
-      if (this.isAnimating || this.progress.boosters.plus5 <= 0) return;
-      this.progress.boosters.plus5--;
-      saveProgress(this.progress);
+      const b = this.getActiveBoosters();
+      if (this.isAnimating || b.plus5 <= 0) return;
+      b.plus5--;
+      if (!this.isEndless) {
+        this.progress.boosters = { ...b };
+        saveProgress(this.progress);
+      }
       this.movesLeft += 5;
       this.audio.playEatChomp();
       this.xiaoqiCheerTimer = 1.5;
@@ -1006,9 +1062,13 @@ export class GameApp {
     this.renderGrid[b.row][b.col].tile = tmpTile;
 
     if (usingGlove) {
-      this.progress.boosters.swap_glove--;
+      const b = this.getActiveBoosters();
+      b.swap_glove--;
       this.activeBooster = null;
-      saveProgress(this.progress);
+      if (!this.isEndless) {
+        this.progress.boosters = { ...b };
+        saveProgress(this.progress);
+      }
       this.renderUI();
       this.isAnimating = true;
     }
@@ -1044,9 +1104,13 @@ export class GameApp {
       this.isAnimating = false;
       return;
     }
-    this.progress.boosters.hammer--;
+    const b = this.getActiveBoosters();
+    b.hammer--;
     this.activeBooster = null;
-    saveProgress(this.progress);
+    if (!this.isEndless) {
+      this.progress.boosters = { ...b };
+      saveProgress(this.progress);
+    }
     this.audio.playSpecialBlast('bomb3');
     this.renderUI();
     this.isAnimating = true;
@@ -1283,7 +1347,7 @@ export class GameApp {
         this.endlessNextMilestone += this.endlessStepGap;
         const gotHammer = this.endlessTier % 2 === 0;
         if (gotHammer) {
-          this.progress.boosters.hammer++;
+          this.endlessBoosters.hammer++;
         }
         this.audio.playVictory();
         this.speechText = `干饭突破第 ${this.endlessTier} 档里程碑！奖励 +4 步${gotHammer ? '与小七木槌' : ''}！`;
@@ -1333,7 +1397,9 @@ export class GameApp {
       }
       // Reward 1 random booster on 3-star clear!
       if (this.earnedStars === 3) {
-        this.progress.boosters.hammer++;
+        const chapBoosters = this.getActiveBoosters();
+        chapBoosters.hammer++;
+        this.progress.boosters = { ...chapBoosters };
       }
       saveProgress(this.progress);
 
@@ -1648,6 +1714,11 @@ export class GameApp {
                 : `<button class="pixel-btn" disabled>🍗 续命已用完</button>`
             }
             ${
+              !this.isEndless
+                ? `<button class="pixel-btn topbar-btn" id="modal-reset-boosters" style="background:#fde68a;" title="重置当前章节的所有道具为各2个">🎒 重置本章道具</button>`
+                : ''
+            }
+            ${
               this.isEndless
                 ? `<button class="pixel-btn topbar-btn" id="modal-open-lb" style="background:#fed7aa;">🏆 全服榜</button>`
                 : ''
@@ -1668,6 +1739,11 @@ export class GameApp {
     });
     backdrop.querySelector('#modal-retry')?.addEventListener('click', () => {
       this.startLevel(this.currentLevel, this.isEndless);
+    });
+    backdrop.querySelector('#modal-reset-boosters')?.addEventListener('click', () => {
+      this.audio.playSelect();
+      this.resetChapterBoosters(this.selectedChapter);
+      this.renderUI();
     });
     backdrop.querySelector('#modal-next-lv')?.addEventListener('click', () => {
       const nextLv = CAMPAIGN_LEVELS.find((l) => l.id === this.currentLevel.id + 1);
@@ -2123,7 +2199,7 @@ export class GameApp {
       ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
     }
 
-    ctx.font = '900 18px "Courier New", monospace';
+    ctx.font = '900 18px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif';
     ctx.textAlign = 'center';
     for (const f of this.floatingScores) {
       ctx.fillStyle = '#2B1E16';
