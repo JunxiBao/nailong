@@ -15,6 +15,12 @@ import {
   renderXiaoQiHelper,
 } from '../assets/pixelSprites';
 import {
+  drawHighDetailChain,
+  drawHighDetailCrate,
+  drawHighDetailIce,
+  drawHighDetailLaser,
+} from '../assets/obstacleSprites';
+import {
   CAMPAIGN_CHAPTERS,
   CAMPAIGN_LEVELS,
   createDefaultBoosters,
@@ -2076,33 +2082,14 @@ export class GameApp {
         ctx.lineWidth = 2;
         ctx.strokeRect(x + 2, y + 2, CELL_PX - 4, CELL_PX - 4);
 
-        // Ice underlay
+        // Ice underlay (High-detail crystalline prism)
         if (cell.iceLevel > 0) {
-          ctx.fillStyle = cell.iceLevel === 2 ? 'rgba(56, 189, 248, 0.72)' : 'rgba(186, 230, 253, 0.78)';
-          ctx.fillRect(x + 2, y + 2, CELL_PX - 4, CELL_PX - 4);
-          ctx.strokeStyle = cell.iceLevel === 2 ? '#0284C7' : '#38BDF8';
-          ctx.lineWidth = 3;
-          ctx.strokeRect(x + 4, y + 4, CELL_PX - 8, CELL_PX - 8);
-          // Pixel ice shine
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(x + 7, y + 7, 10, 4);
-          ctx.fillRect(x + 7, y + 11, 4, 6);
+          drawHighDetailIce(ctx, x, y, CELL_PX, cell.iceLevel as 1 | 2, timeSec);
         }
 
-        // Wooden Snack Crate obstacle
+        // Wooden Snack Crate obstacle (High-detail timber planks, X-brace, iron brackets & rivets)
         if (cell.crateHp > 0) {
-          ctx.fillStyle = cell.crateHp === 2 ? '#92400E' : '#B45309';
-          ctx.fillRect(x + 4, y + 4, CELL_PX - 8, CELL_PX - 8);
-          ctx.fillStyle = cell.crateHp === 2 ? '#B45309' : '#D97706';
-          ctx.fillRect(x + 8, y + 8, CELL_PX - 16, CELL_PX - 16);
-          ctx.strokeStyle = '#2B1E16';
-          ctx.lineWidth = 3;
-          ctx.strokeRect(x + 4, y + 4, CELL_PX - 8, CELL_PX - 8);
-          // Diagonal wood plank / crack
-          ctx.fillStyle = cell.crateHp === 2 ? '#FDE68A' : '#2B1E16';
-          for (let d = 0; d < 40; d += 4) {
-            ctx.fillRect(x + 10 + d, y + 10 + d, 4, 4);
-          }
+          drawHighDetailCrate(ctx, x, y, CELL_PX, cell.crateHp as 1 | 2);
         }
       }
     }
@@ -2198,22 +2185,9 @@ export class GameApp {
           drawSpecialBadge(ctx, Math.round(drawX), Math.round(drawY), CELL_PX, cell.tile.special, timeSec);
         }
 
-        // Locked Chain overlay (on top of tile)
+        // Locked Chain overlay (High-detail 3D interlocked steel chain links & brass padlock)
         if (cell.chain) {
-          ctx.strokeStyle = '#334155';
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.moveTo(drawX + 8, drawY + 8);
-          ctx.lineTo(drawX + CELL_PX - 8, drawY + CELL_PX - 8);
-          ctx.moveTo(drawX + CELL_PX - 8, drawY + 8);
-          ctx.lineTo(drawX + 8, drawY + CELL_PX - 8);
-          ctx.stroke();
-          // Padlock center pixel icon
-          ctx.fillStyle = '#94A3B8';
-          ctx.fillRect(drawX + 24, drawY + 24, 16, 16);
-          ctx.strokeStyle = '#1E293B';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(drawX + 24, drawY + 24, 16, 16);
+          drawHighDetailChain(ctx, Math.round(drawX), Math.round(drawY), CELL_PX, timeSec);
         }
       }
     }
@@ -2228,22 +2202,8 @@ export class GameApp {
       ctx.save();
       ctx.globalAlpha = 1 - t * 0.75;
 
-      if (ev.kind === 'line_h') {
-        const h = Math.max(6, Math.round(34 * (1 - t)));
-        ctx.fillStyle = '#FF5722';
-        ctx.fillRect(0, oy - h / 2, BOARD_PX, h);
-        ctx.fillStyle = '#FFF59D';
-        ctx.fillRect(0, oy - h / 4, BOARD_PX, h / 2);
-      } else if (ev.kind === 'line_v') {
-        const w = Math.max(6, Math.round(34 * (1 - t)));
-        ctx.fillStyle = '#FF5722';
-        ctx.fillRect(ox - w / 2, 0, w, BOARD_PX);
-        ctx.fillStyle = '#FFF59D';
-        ctx.fillRect(ox - w / 4, 0, w / 2, BOARD_PX);
-      } else if (ev.kind === 'cross3') {
-        ctx.fillStyle = 'rgba(255, 112, 67, 0.78)';
-        ctx.fillRect(0, oy - CELL_PX * 1.5, BOARD_PX, CELL_PX * 3);
-        ctx.fillRect(ox - CELL_PX * 1.5, 0, CELL_PX * 3, BOARD_PX);
+      if (ev.kind === 'line_h' || ev.kind === 'line_v' || ev.kind === 'cross3') {
+        drawHighDetailLaser(ctx, ox, oy, BOARD_PX, CELL_PX, ev.kind, t, timeSec);
       } else if (ev.kind === 'bomb3' || ev.kind === 'bomb5' || ev.kind === 'belly_slam') {
         const maxR = ev.kind === 'bomb3' ? CELL_PX * 1.8 : CELL_PX * 3.2;
         const rad = maxR * t;

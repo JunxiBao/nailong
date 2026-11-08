@@ -12,6 +12,12 @@ import {
 } from '../src/levels/campaignLevels';
 import { TileColor } from '../src/match3/types';
 import { MatchAudio, NAILONG_VOICE_CLIPS } from '../src/audio/MatchAudio';
+import {
+  drawHighDetailChain,
+  drawHighDetailCrate,
+  drawHighDetailIce,
+  drawHighDetailLaser,
+} from '../src/assets/obstacleSprites';
 
 function makeSeededRng(seed = 12345): () => number {
   let s = seed >>> 0;
@@ -351,5 +357,54 @@ describe('BoardEngine Match-3 Core Mechanics', () => {
     expect(getChapterStars(highStarsMap, 1)).toBe(25);
     expect(isChapterUnlocked(11, highStarsMap, 2)).toBe(true);
     expect(isLevelUnlocked(11, highStarsMap, 11)).toBe(true);
+  });
+
+  it('renders high-detail obstacle sprites (crate, chain, ice, laser) without runtime errors', () => {
+    const dummyCtx = {
+      save: () => {},
+      restore: () => {},
+      beginPath: () => {},
+      closePath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      arc: () => {},
+      ellipse: () => {},
+      stroke: () => {},
+      fill: () => {},
+      fillRect: () => {},
+      strokeRect: () => {},
+      clearRect: () => {},
+      clip: () => {},
+      rect: () => {},
+      translate: () => {},
+      rotate: () => {},
+      scale: () => {},
+      createLinearGradient: () => ({ addColorStop: () => {} }),
+      createRadialGradient: () => ({ addColorStop: () => {} }),
+      lineWidth: 1,
+      strokeStyle: '#000',
+      fillStyle: '#000',
+      globalAlpha: 1,
+      shadowColor: '',
+      shadowBlur: 0,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
+    } as unknown as CanvasRenderingContext2D;
+
+    // Test Crate HP=1 and HP=2
+    expect(() => drawHighDetailCrate(dummyCtx, 0, 0, 64, 1)).not.toThrow();
+    expect(() => drawHighDetailCrate(dummyCtx, 10, 10, 64, 2)).not.toThrow();
+
+    // Test Chain
+    expect(() => drawHighDetailChain(dummyCtx, 0, 0, 64, 1.25)).not.toThrow();
+
+    // Test Ice level 1 and 2
+    expect(() => drawHighDetailIce(dummyCtx, 0, 0, 64, 1, 0.5)).not.toThrow();
+    expect(() => drawHighDetailIce(dummyCtx, 0, 0, 64, 2, 1.5)).not.toThrow();
+
+    // Test Lasers
+    expect(() => drawHighDetailLaser(dummyCtx, 32, 32, 512, 64, 'line_h', 0.2, 1.0)).not.toThrow();
+    expect(() => drawHighDetailLaser(dummyCtx, 32, 32, 512, 64, 'line_v', 0.5, 2.0)).not.toThrow();
+    expect(() => drawHighDetailLaser(dummyCtx, 32, 32, 512, 64, 'cross3', 0.8, 3.0)).not.toThrow();
   });
 });
