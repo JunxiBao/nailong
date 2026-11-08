@@ -454,7 +454,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     moves: 19,
     colorsCount: 5,
     colors: ['nailong', 'bombloong', 'minion', 'drumstick', 'strawberry'],
-    starScores: [1600, 3100, 4800],
+    starScores: [1000, 2000, 3200],
     goals: [
       { type: 'collect', color: 'drumstick', target: 18 },
       { type: 'collect', color: 'nailong', target: 18 },
@@ -470,7 +470,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     moves: 21,
     colorsCount: 5,
     colors: ['nailong', 'minion', 'drumstick', 'strawberry', 'milktea'],
-    starScores: [2000, 3800, 5600],
+    starScores: [1200, 2400, 3800],
     goals: [
       { type: 'collect', color: 'strawberry', target: 15 },
       { type: 'collect', color: 'milktea', target: 15 },
@@ -487,7 +487,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     moves: 21,
     colorsCount: 5,
     colors: ['nailong', 'bombloong', 'minion', 'strawberry', 'milktea'],
-    starScores: [2300, 4300, 6400],
+    starScores: [1400, 2800, 4200],
     goals: [
       { type: 'ice', target: countLayoutLayers(L3_LAYOUT, 'ice') },
       { type: 'collect', color: 'milktea', target: 14 },
@@ -503,7 +503,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     moves: 22,
     colorsCount: 5,
     colors: ['nailong', 'bombloong', 'minion', 'drumstick', 'strawberry'],
-    starScores: [2600, 4800, 7000],
+    starScores: [1600, 3200, 4600],
     goals: [
       { type: 'ice', target: countLayoutLayers(L4_LAYOUT, 'ice') },
       { type: 'crate', target: countLayoutLayers(L4_LAYOUT, 'crate') },
@@ -518,7 +518,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 24,
     colorsCount: 6,
-    starScores: [3400, 5800, 8600],
+    starScores: [2000, 3800, 5800],
     bossMaxHp: 900,
     bossAttackInterval: 3,
     goals: [
@@ -535,7 +535,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 23,
     colorsCount: 6,
-    starScores: [3100, 5500, 8000],
+    starScores: [1800, 3500, 5200],
     goals: [
       { type: 'crate', target: countLayoutLayers(L6_CRATE_LAYOUT, 'crate') },
       { type: 'collect', color: 'drumstick', target: 18 },
@@ -550,7 +550,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 24,
     colorsCount: 6,
-    starScores: [3400, 6000, 8800],
+    starScores: [2000, 3800, 5600],
     goals: [
       { type: 'chain', target: countLayoutLayers(L7_CHAIN_LAYOUT, 'chain') },
       { type: 'ice', target: countLayoutLayers(L7_CHAIN_LAYOUT, 'ice') },
@@ -565,7 +565,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 24,
     colorsCount: 6,
-    starScores: [3600, 6400, 9400],
+    starScores: [2200, 4000, 6000],
     goals: [
       { type: 'collect', color: 'nailong', target: 17 },
       { type: 'collect', color: 'bombloong', target: 17 },
@@ -581,7 +581,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 25,
     colorsCount: 6,
-    starScores: [4000, 7200, 10500],
+    starScores: [2400, 4400, 6600],
     goals: [
       { type: 'crate', target: countLayoutLayers(L9_FORTRESS_LAYOUT, 'crate') },
       { type: 'ice', target: countLayoutLayers(L9_FORTRESS_LAYOUT, 'ice') },
@@ -597,7 +597,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 28,
     colorsCount: 6,
-    starScores: [5000, 8600, 12800],
+    starScores: [2800, 5200, 8000],
     bossMaxHp: 1350,
     bossAttackInterval: 3,
     goals: [
@@ -618,7 +618,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     moves: 23,
     colorsCount: 5,
     colors: ['nailong', 'minion', 'drumstick', 'strawberry', 'milktea'],
-    starScores: [3000, 5600, 8400],
+    starScores: [1800, 3600, 5400],
     goals: [
       { type: 'collect', color: 'milktea', target: 18 },
       { type: 'collect', color: 'strawberry', target: 18 },
@@ -634,7 +634,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 24,
     colorsCount: 6,
-    starScores: [3400, 6200, 9200],
+    starScores: [2000, 3800, 5800],
     goals: [
       { type: 'ice', target: countLayoutLayers(L12_DONUT_LAYOUT, 'ice') },
       { type: 'collect', color: 'drumstick', target: 16 },
@@ -649,7 +649,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 24,
     colorsCount: 6,
-    starScores: [3500, 6400, 9500],
+    starScores: [2100, 4000, 6000],
     goals: [
       { type: 'crate', target: countLayoutLayers(L13_PATROL_LAYOUT, 'crate') },
       { type: 'collect', color: 'minion', target: 19 },
@@ -665,7 +665,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     moves: 24,
     colorsCount: 5,
     colors: ['nailong', 'bombloong', 'minion', 'strawberry', 'milktea'],
-    starScores: [3600, 6600, 9800],
+    starScores: [2200, 4200, 6200],
     goals: [
       { type: 'chain', target: countLayoutLayers(L14_HOURGLASS_LAYOUT, 'chain') },
       { type: 'ice', target: countLayoutLayers(L14_HOURGLASS_LAYOUT, 'ice') },
@@ -682,7 +682,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     moves: 26,
     colorsCount: 5,
     colors: ['nailong', 'bombloong', 'minion', 'drumstick', 'milktea'],
-    starScores: [4200, 7400, 11000],
+    starScores: [2600, 4800, 7200],
     bossMaxHp: 1250,
     bossAttackInterval: 3,
     goals: [
@@ -699,7 +699,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 24,
     colorsCount: 6,
-    starScores: [3600, 6500, 9600],
+    starScores: [2200, 4200, 6200],
     goals: [
       { type: 'crate', target: countLayoutLayers(L16_WAFFLE_LAYOUT, 'crate') },
       { type: 'collect', color: 'strawberry', target: 19 },
@@ -714,7 +714,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 25,
     colorsCount: 6,
-    starScores: [3800, 6800, 10000],
+    starScores: [2400, 4400, 6500],
     goals: [
       { type: 'chain', target: countLayoutLayers(L17_PRISM_LAYOUT, 'chain') },
       { type: 'ice', target: countLayoutLayers(L17_PRISM_LAYOUT, 'ice') },
@@ -729,7 +729,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 25,
     colorsCount: 6,
-    starScores: [3900, 7000, 10400],
+    starScores: [2400, 4500, 6600],
     goals: [
       { type: 'crate', target: countLayoutLayers(L18_FOUNTAIN_LAYOUT, 'crate') },
       { type: 'collect', color: 'milktea', target: 18 },
@@ -745,7 +745,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 26,
     colorsCount: 6,
-    starScores: [4200, 7600, 11200],
+    starScores: [2600, 4800, 7200],
     goals: [
       { type: 'ice', target: countLayoutLayers(L19_TERRACE_LAYOUT, 'ice') },
       { type: 'crate', target: countLayoutLayers(L19_TERRACE_LAYOUT, 'crate') },
@@ -761,7 +761,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 28,
     colorsCount: 6,
-    starScores: [5200, 9000, 13200],
+    starScores: [3000, 5600, 8500],
     bossMaxHp: 1450,
     bossAttackInterval: 3,
     goals: [
@@ -782,7 +782,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     moves: 24,
     colorsCount: 5,
     colors: ['nailong', 'bombloong', 'minion', 'drumstick', 'milktea'],
-    starScores: [3800, 6800, 10200],
+    starScores: [2400, 4500, 6600],
     goals: [
       { type: 'crate', target: countLayoutLayers(L21_NEON_CORRIDOR_LAYOUT, 'crate') },
       { type: 'chain', target: countLayoutLayers(L21_NEON_CORRIDOR_LAYOUT, 'chain') },
@@ -798,7 +798,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 25,
     colorsCount: 6,
-    starScores: [4000, 7200, 10600],
+    starScores: [2500, 4600, 6800],
     goals: [
       { type: 'crate', target: countLayoutLayers(L22_BUTTERFLY_LAYOUT, 'crate') },
       { type: 'collect', color: 'strawberry', target: 18 },
@@ -814,7 +814,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 25,
     colorsCount: 6,
-    starScores: [4200, 7500, 11000],
+    starScores: [2600, 4800, 7000],
     goals: [
       { type: 'crate', target: countLayoutLayers(L23_GEAR_CROSS_LAYOUT, 'crate') },
       { type: 'chain', target: countLayoutLayers(L23_GEAR_CROSS_LAYOUT, 'chain') },
@@ -830,7 +830,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 25,
     colorsCount: 6,
-    starScores: [4200, 7600, 11200],
+    starScores: [2600, 4800, 7200],
     goals: [
       { type: 'crate', target: countLayoutLayers(L24_SNACK_VAULT_LAYOUT, 'crate') },
       { type: 'collect', color: 'drumstick', target: 20 },
@@ -846,7 +846,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 28,
     colorsCount: 6,
-    starScores: [5400, 9200, 13600],
+    starScores: [3200, 5800, 8800],
     bossMaxHp: 1500,
     bossAttackInterval: 3,
     goals: [
@@ -864,7 +864,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 26,
     colorsCount: 6,
-    starScores: [4300, 7800, 11500],
+    starScores: [2700, 5000, 7400],
     goals: [
       { type: 'chain', target: countLayoutLayers(L26_STAR_X_LAYOUT, 'chain') },
       { type: 'ice', target: countLayoutLayers(L26_STAR_X_LAYOUT, 'ice') },
@@ -879,7 +879,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 26,
     colorsCount: 6,
-    starScores: [4400, 8000, 11800],
+    starScores: [2800, 5200, 7600],
     goals: [
       { type: 'collect', color: 'milktea', target: 19 },
       { type: 'collect', color: 'strawberry', target: 19 },
@@ -895,7 +895,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 27,
     colorsCount: 6,
-    starScores: [4600, 8200, 12200],
+    starScores: [2900, 5400, 7800],
     goals: [
       { type: 'crate', target: countLayoutLayers(L28_MECHA_MAZE_LAYOUT, 'crate') },
       { type: 'chain', target: countLayoutLayers(L28_MECHA_MAZE_LAYOUT, 'chain') },
@@ -911,7 +911,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 27,
     colorsCount: 6,
-    starScores: [4800, 8500, 12600],
+    starScores: [3000, 5500, 8200],
     goals: [
       { type: 'ice', target: countLayoutLayers(L29_GRAND_EVE_LAYOUT, 'ice') },
       { type: 'crate', target: countLayoutLayers(L29_GRAND_EVE_LAYOUT, 'crate') },
@@ -928,7 +928,7 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
     cols: 8,
     moves: 30,
     colorsCount: 6,
-    starScores: [6000, 10500, 15500],
+    starScores: [3600, 6600, 10000],
     bossMaxHp: 1680,
     bossAttackInterval: 3,
     goals: [
@@ -949,7 +949,7 @@ export const ENDLESS_LEVEL: LevelConfig = {
   cols: 8,
   moves: 18,
   colorsCount: 6,
-  starScores: [4000, 9500, 19000],
+  starScores: [2500, 6000, 12000],
   goals: [{ type: 'score', target: 999999 }],
   layout: L2_LAYOUT,
 };
@@ -1024,6 +1024,15 @@ export function loadProgress(): SaveProgress {
       boosters: { ...fallback.boosters, ...(parsed.boosters ?? {}) },
       chapterBoosters,
     };
+    // Re-evaluate level stars with the new relaxed thresholds based on recorded best scores
+    for (const lv of CAMPAIGN_LEVELS) {
+      const best = merged.levelBestScores[lv.id] ?? 0;
+      if (best > 0) {
+        const [s1, s2, s3] = lv.starScores;
+        const recalculated = best >= s3 ? 3 : best >= s2 ? 2 : best >= s1 ? 1 : 1;
+        merged.levelStars[lv.id] = Math.max(merged.levelStars[lv.id] ?? 0, recalculated);
+      }
+    }
     if (merged.playerId !== parsed.playerId) {
       saveProgress(merged);
     }
