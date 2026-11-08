@@ -1001,7 +1001,7 @@ export class GameApp {
 
     canvas.addEventListener('pointerdown', (ev) => {
       ev.preventDefault();
-      if (this.isAnimating || this.activeModal !== 'none') return;
+      if (this.isAnimating || this.activeModal !== 'none' || this.movesLeft <= 0) return;
       this.audio.unlock();
       this.lastActionTime = performance.now();
       this.hintPair = null;
@@ -1034,7 +1034,7 @@ export class GameApp {
     });
 
     canvas.addEventListener('pointermove', (ev) => {
-      if (!this.dragStartCell || !this.dragStartPt || this.isAnimating) return;
+      if (!this.dragStartCell || !this.dragStartPt || this.isAnimating || this.movesLeft <= 0) return;
       ev.preventDefault();
       const dx = ev.clientX - this.dragStartPt.x;
       const dy = ev.clientY - this.dragStartPt.y;
@@ -1064,7 +1064,7 @@ export class GameApp {
   }
 
   private async handlePlayerSwapAttempt(a: Coord, b: Coord): Promise<void> {
-    if (this.isAnimating) return;
+    if (this.isAnimating || this.movesLeft <= 0) return;
     this.isAnimating = true;
     this.audio.playSwap();
 
@@ -1125,6 +1125,7 @@ export class GameApp {
   }
 
   private async executeHammerBooster(target: Coord): Promise<void> {
+    if (this.movesLeft <= 0) return;
     this.isAnimating = true;
     const res = this.engine.useHammer(target);
     if (!res.valid) {
@@ -1149,6 +1150,7 @@ export class GameApp {
   }
 
   private async executeBellySlamSkill(): Promise<void> {
+    if (this.movesLeft <= 0) return;
     this.isAnimating = true;
     this.bellyEnergy = 0;
     this.nailongPose = 'belly_slam';
@@ -1681,7 +1683,9 @@ export class GameApp {
                 ? `<button class="pixel-btn topbar-btn" id="btn-lb-play-endless">🍗 冲击全服第一</button>`
                 : ''
             }
-            <button class="pixel-btn topbar-btn" id="modal-close" style="background:#fde68a;">关闭</button>
+            <button class="pixel-btn topbar-btn" id="modal-close" style="background:#fde68a;">
+              ${this.movesLeft <= 0 && this.screen === 'play' ? (this.isEndless ? '🚪 退出到主页' : '🚪 退出到地图') : '关闭'}
+            </button>
           </div>
         </div>
       `;
@@ -1794,7 +1798,7 @@ export class GameApp {
                 : ''
             }
             <button class="pixel-btn" id="modal-retry">🔄 重新挑战</button>
-            <button class="pixel-btn secondary" id="modal-to-map">返回</button>
+            <button class="pixel-btn secondary" id="modal-to-map">${this.isEndless ? '🚪 退出到主页' : '返回选关'}</button>
           </div>
         </div>
       `;
@@ -1804,6 +1808,12 @@ export class GameApp {
 
     backdrop.querySelector('#modal-close')?.addEventListener('click', () => {
       this.audio.playSelect();
+      if (this.movesLeft <= 0 && this.screen === 'play') {
+        this.activeModal = 'none';
+        this.screen = this.isEndless ? 'title' : 'map';
+        this.renderUI();
+        return;
+      }
       this.activeModal = 'none';
       this.renderUI();
     });
@@ -1815,6 +1825,7 @@ export class GameApp {
       if (nextLv) this.startLevel(nextLv, false);
     });
     backdrop.querySelector('#modal-to-map')?.addEventListener('click', () => {
+      this.audio.playSelect();
       this.activeModal = 'none';
       this.screen = this.isEndless ? 'title' : 'map';
       this.renderUI();
