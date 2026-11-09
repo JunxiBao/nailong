@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 
 const MAX_VALID_SCORE = 5_000_000;
+const MAX_VALID_STARS = 150;
 
 function sanitizePlayerId(raw) {
   const s = String(raw ?? '')
@@ -16,7 +17,8 @@ function sanitizeNickname(raw, playerId) {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 12);
-  if (cleaned.length > 0) return cleaned;
+  if (cleaned.length >= 2) return cleaned;
+  if (cleaned.length === 1) return cleaned;
   const suffix = playerId ? playerId.slice(-4).toUpperCase() : '0001';
   return `干饭家#${suffix}`;
 }
@@ -47,40 +49,60 @@ export class LeaderboardDO extends DurableObject {
         );
         CREATE INDEX IF NOT EXISTS idx_endless_score_desc
         ON endless_scores (score DESC, updated_at ASC);
+
+        CREATE TABLE IF NOT EXISTS campaign_stars (
+          player_id TEXT PRIMARY KEY,
+          nickname TEXT NOT NULL,
+          stars INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_campaign_stars_desc
+        ON campaign_stars (stars DESC, updated_at ASC);
+
+        CREATE TABLE IF NOT EXISTS player_nicknames (
+          player_id TEXT PRIMARY KEY,
+          nickname TEXT NOT NULL UNIQUE COLLATE NOCASE,
+          updated_at INTEGER NOT NULL
+        );
       `);
     });
   }
 
-  buildSnapshot(playerId) {
+  buildSnapshot(playerId, type = 'endless') {
+    const isStars = type === 'stars';
+    const tableName = isStars ? 'campaign_stars' : 'endless_scores';
+    const valCol = isStars ? 'stars' : 'score';
+
     const topRows = this.ctx.storage.sql
       .exec(
-        `SELECT player_id, nickname, score, updated_at
-         FROM endless_scores
-         WHERE score > 0
-         ORDER BY score DESC, updated_at ASC
+        `SELECT player_id, nickname, ${valCol} AS val, updated_at
+         FROM ${tableName}
+         WHERE ${valCol} > 0
+         ORDER BY ${valCol} DESC, updated_at ASC
          LIMIT 10`
       )
       .toArray();
 
     const countRow = this.ctx.storage.sql
-      .exec(`SELECT COUNT(*) AS cnt FROM endless_scores WHERE score > 0`)
+      .exec(`SELECT COUNT(*) AS cnt FROM ${tableName} WHERE ${valCol} > 0`)
       .one();
 
     let playerRank = null;
+    let playerValue = 0;
     if (playerId) {
       const meRows = this.ctx.storage.sql
-        .exec(`SELECT score, updated_at FROM endless_scores WHERE player_id = ?`, playerId)
+        .exec(`SELECT ${valCol} AS val, updated_at FROM ${tableName} WHERE player_id = ?`, playerId)
         .toArray();
-      if (meRows.length > 0 && meRows[0].score > 0) {
-        const myScore = meRows[0].score;
+      if (meRows.length > 0 && meRows[0].val > 0) {
+        playerValue = Number(meRows[0].val);
         const myTime = meRows[0].updated_at;
         const higherRow = this.ctx.storage.sql
           .exec(
             `SELECT COUNT(*) AS higher
-             FROM endless_scores
-             WHERE score > ? OR (score = ? AND updated_at < ?)`,
-            myScore,
-            myScore,
+             FROM ${tableName}
+             WHERE ${valCol} > ? OR (${valCol} = ? AND updated_at < ?)`,
+            playerValue,
+            playerValue,
             myTime
           )
           .one();
@@ -92,16 +114,21 @@ export class LeaderboardDO extends DurableObject {
       rank: idx + 1,
       playerId: String(row.player_id),
       nickname: String(row.nickname),
-      score: Number(row.score),
+      score: Number(row.val),
       updatedAt: Number(row.updated_at),
     }));
 
+    const top10Threshold = entries.length >= 10 ? entries[9].score : 0;
+
     return {
       ok: true,
+      type: isStars ? 'stars' : 'endless',
       topScore: entries[0]?.score ?? 0,
       championName: entries[0]?.nickname ?? '虚位以待',
       totalPlayers: Number(countRow.cnt ?? 0),
       playerRank,
+      playerValue,
+      top10Threshold,
       entries,
     };
   }
@@ -114,7 +141,8 @@ export class LeaderboardDO extends DurableObject {
     const url = new URL(request.url);
     if (request.method === 'GET') {
       const pid = sanitizePlayerId(url.searchParams.get('playerId'));
-      return jsonResponse(this.buildSnapshot(pid));
+      const type = url.searchParams.get('type') === 'stars' ? 'stars' : 'endless';
+      return jsonResponse(this.buildSnapshot(pid, type));
     }
 
     if (request.method === 'POST') {
@@ -129,58 +157,146 @@ export class LeaderboardDO extends DurableObject {
       if (!playerId) {
         return jsonResponse({ ok: false, error: 'Invalid playerId' }, 400);
       }
-
-      const rawScore = Number(body.score ?? 0);
-      const score = Number.isFinite(rawScore)
-        ? Math.max(0, Math.min(MAX_VALID_SCORE, Math.floor(rawScore)))
-        : 0;
-      const hasCustomNick = String(body.nickname ?? '').trim().length > 0;
-      const nickname = sanitizeNickname(body.nickname, playerId);
       const now = Date.now();
 
-      const existing = this.ctx.storage.sql
-        .exec(`SELECT score, nickname FROM endless_scores WHERE player_id = ?`, playerId)
+      // 1. Action: set_nickname with duplicate check
+      if (body.action === 'set_nickname') {
+        const rawNick = String(body.nickname ?? '').trim();
+        if (rawNick.length < 2 || rawNick.length > 12) {
+          return jsonResponse({ ok: false, error: '昵称长度需在 2 到 12 个字符之间！' }, 400);
+        }
+        const cleaned = sanitizeNickname(rawNick, playerId);
+
+        // Check uniqueness in database
+        const conflict = this.ctx.storage.sql
+          .exec(
+            `SELECT player_id FROM player_nicknames WHERE nickname = ? COLLATE NOCASE AND player_id != ?`,
+            cleaned,
+            playerId
+          )
+          .toArray();
+
+        if (conflict.length > 0) {
+          return jsonResponse({ ok: false, error: '该昵称已被其他干饭家使用，请换一个吧！' }, 409);
+        }
+
+        // Save nickname
+        this.ctx.storage.sql.exec(
+          `INSERT INTO player_nicknames (player_id, nickname, updated_at)
+           VALUES (?, ?, ?)
+           ON CONFLICT(player_id) DO UPDATE SET nickname = excluded.nickname, updated_at = excluded.updated_at`,
+          playerId,
+          cleaned,
+          now
+        );
+        this.ctx.storage.sql.exec(
+          `UPDATE endless_scores SET nickname = ? WHERE player_id = ?`,
+          cleaned,
+          playerId
+        );
+        this.ctx.storage.sql.exec(
+          `UPDATE campaign_stars SET nickname = ? WHERE player_id = ?`,
+          cleaned,
+          playerId
+        );
+
+        return jsonResponse({ ok: true, nickname: cleaned });
+      }
+
+      // 2. Score submission (endless or stars)
+      const isStars = body.type === 'stars';
+      const rawVal = Number(body.score ?? (isStars ? body.stars : 0));
+      const val = Number.isFinite(rawVal)
+        ? Math.max(0, Math.min(isStars ? MAX_VALID_STARS : MAX_VALID_SCORE, Math.floor(rawVal)))
+        : 0;
+
+      // Determine player's nickname
+      let nickname = '';
+      const existingNick = this.ctx.storage.sql
+        .exec(`SELECT nickname FROM player_nicknames WHERE player_id = ?`, playerId)
+        .toArray();
+      if (existingNick.length > 0) {
+        nickname = String(existingNick[0].nickname);
+      }
+
+      if (body.nickname && String(body.nickname).trim().length > 0) {
+        const customClean = sanitizeNickname(body.nickname, playerId);
+        const conflict = this.ctx.storage.sql
+          .exec(
+            `SELECT player_id FROM player_nicknames WHERE nickname = ? COLLATE NOCASE AND player_id != ?`,
+            customClean,
+            playerId
+          )
+          .toArray();
+        if (conflict.length === 0) {
+          nickname = customClean;
+          this.ctx.storage.sql.exec(
+            `INSERT INTO player_nicknames (player_id, nickname, updated_at)
+             VALUES (?, ?, ?)
+             ON CONFLICT(player_id) DO UPDATE SET nickname = excluded.nickname, updated_at = excluded.updated_at`,
+            playerId,
+            nickname,
+            now
+          );
+        }
+      }
+
+      if (!nickname) {
+        nickname = sanitizeNickname('', playerId);
+        this.ctx.storage.sql.exec(
+          `INSERT INTO player_nicknames (player_id, nickname, updated_at)
+           VALUES (?, ?, ?)
+           ON CONFLICT(player_id) DO UPDATE SET nickname = excluded.nickname, updated_at = excluded.updated_at`,
+          playerId,
+          nickname,
+          now
+        );
+      }
+
+      const tableName = isStars ? 'campaign_stars' : 'endless_scores';
+      const valCol = isStars ? 'stars' : 'score';
+
+      const existingRecord = this.ctx.storage.sql
+        .exec(`SELECT ${valCol} AS val FROM ${tableName} WHERE player_id = ?`, playerId)
         .toArray();
 
-      if (existing.length === 0) {
-        if (score > 0) {
+      if (existingRecord.length === 0) {
+        if (val > 0) {
           this.ctx.storage.sql.exec(
-            `INSERT INTO endless_scores (player_id, nickname, score, updated_at)
+            `INSERT INTO ${tableName} (player_id, nickname, ${valCol}, updated_at)
              VALUES (?, ?, ?, ?)`,
             playerId,
             nickname,
-            score,
+            val,
             now
           );
         }
       } else {
-        const prevScore = Number(existing[0].score);
-        const prevNick = String(existing[0].nickname);
-        const nextScore = Math.max(prevScore, score);
-        const nextNick = hasCustomNick ? nickname : prevNick || nickname;
-        const nextTime = score > prevScore ? now : undefined;
+        const prevVal = Number(existingRecord[0].val);
+        const nextVal = Math.max(prevVal, val);
+        const nextTime = val > prevVal ? now : undefined;
         if (nextTime !== undefined) {
           this.ctx.storage.sql.exec(
-            `UPDATE endless_scores
-             SET score = ?, nickname = ?, updated_at = ?
+            `UPDATE ${tableName}
+             SET ${valCol} = ?, nickname = ?, updated_at = ?
              WHERE player_id = ?`,
-            nextScore,
-            nextNick,
+            nextVal,
+            nickname,
             nextTime,
             playerId
           );
-        } else if (nextNick !== prevNick) {
+        } else {
           this.ctx.storage.sql.exec(
-            `UPDATE endless_scores
+            `UPDATE ${tableName}
              SET nickname = ?
              WHERE player_id = ?`,
-            nextNick,
+            nickname,
             playerId
           );
         }
       }
 
-      return jsonResponse(this.buildSnapshot(playerId));
+      return jsonResponse(this.buildSnapshot(playerId, isStars ? 'stars' : 'endless'));
     }
 
     return jsonResponse({ ok: false, error: 'Method Not Allowed' }, 405);
@@ -192,7 +308,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/leaderboard') {
-      const id = env.LEADERBOARD_DO.idFromName('global-endless-v1');
+      const id = env.LEADERBOARD_DO.idFromName('global-leaderboard-v2');
       const stub = env.LEADERBOARD_DO.get(id);
       return stub.fetch(request);
     }

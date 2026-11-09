@@ -135,6 +135,37 @@ describe('High-Detail Pixel Models & Reference Stickers Pipeline', () => {
     expect(postData.topScore).toBeGreaterThanOrEqual(12800);
     expect(postData.championName).toBe('奶龙干饭王');
     expect(postData.playerRank).toBe(1);
+
+    // Test unique nickname enforcement (returns 409 Conflict if nickname is already taken by another player)
+    const setNickReq1 = new Request('https://example.com/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'set_nickname', playerId: 'player_a', nickname: '暴饮暴食奶龙' }),
+    });
+    const setNickRes1 = await onRequest({ request: setNickReq1, env: {} });
+    expect(setNickRes1.status).toBe(200);
+
+    const dupNickReq = new Request('https://example.com/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'set_nickname', playerId: 'player_b', nickname: '暴饮暴食奶龙' }),
+    });
+    const dupNickRes = await onRequest({ request: dupNickReq, env: {} });
+    expect(dupNickRes.status).toBe(409);
+    const dupJson = await dupNickRes.json();
+    expect(dupJson.error).toContain('已被其他干饭家使用');
+
+    // Test campaign stars leaderboard & strict Top 10 limit
+    const starsReq = new Request('https://example.com/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'submit_stars', playerId: 'player_a', nickname: '暴饮暴食奶龙', stars: 120 }),
+    });
+    const starsRes = await onRequest({ request: starsReq, env: {} });
+    expect(starsRes.status).toBe(200);
+    const starsData = await starsRes.json();
+    expect(starsData.topScore).toBeGreaterThanOrEqual(120);
+    expect(starsData.entries.length).toBeLessThanOrEqual(10);
   });
 
   it('includes all extracted Nailong voice audio assets, removes source videos, and cycles clips round-robin on playNailongVoice()', () => {
