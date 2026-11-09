@@ -6,6 +6,7 @@ import {
   CAMPAIGN_LEVELS,
   createDefaultBoosters,
   getChapterStars,
+  isAllClear,
   isChapterUnlocked,
   isLevelUnlocked,
   REQUIRED_CHAPTER_STARS,
@@ -97,14 +98,19 @@ describe('High-Detail Pixel Models & Reference Stickers Pipeline', () => {
       expect(buf.readUInt32BE(20)).toBe(48);
     }
 
-    // Verify 320x200 16-bit pixel scenic backgrounds for all 3 chapters
-    for (const chapId of [1, 2, 3]) {
+    // Verify 320x200 16-bit pixel scenic backgrounds for all 5 chapters and all-clear celebration
+    for (const chapId of [1, 2, 3, 4, 5]) {
       const bgPath = path.resolve(`public/assets/models/bg_chapter_${chapId}.png`);
       expect(fs.existsSync(bgPath)).toBe(true);
       const buf = fs.readFileSync(bgPath);
       expect(buf.readUInt32BE(16)).toBe(320);
       expect(buf.readUInt32BE(20)).toBe(200);
     }
+    const allClearPath = path.resolve('public/assets/models/bg_all_clear.png');
+    expect(fs.existsSync(allClearPath)).toBe(true);
+    const acBuf = fs.readFileSync(allClearPath);
+    expect(acBuf.readUInt32BE(16)).toBe(320);
+    expect(acBuf.readUInt32BE(20)).toBe(200);
   });
 
   it('configures server-side global Endless leaderboard on Cloudflare (SQLite Durable Object + Pages API)', async () => {
@@ -166,8 +172,8 @@ describe('High-Detail Pixel Models & Reference Stickers Pipeline', () => {
 });
 
 describe('BoardEngine Match-3 Core Mechanics', () => {
-  it('initializes all 30 campaign levels across 3 chapters with playable moves and valid cells', () => {
-    expect(CAMPAIGN_LEVELS.length).toBe(30);
+  it('initializes all 50 campaign levels across 5 chapters with playable moves and valid cells', () => {
+    expect(CAMPAIGN_LEVELS.length).toBe(50);
     CAMPAIGN_LEVELS.forEach((level, idx) => {
       expect(level.id).toBe(idx + 1);
       expect(level.layout?.length).toBe(level.rows);
@@ -358,6 +364,12 @@ describe('BoardEngine Match-3 Core Mechanics', () => {
     expect(getChapterStars(highStarsMap, 1)).toBe(25);
     expect(isChapterUnlocked(11, highStarsMap, 2)).toBe(true);
     expect(isLevelUnlocked(11, highStarsMap, 11)).toBe(true);
+
+    // Verify all-clear celebration state
+    expect(isAllClear(51, {})).toBe(true);
+    expect(isAllClear(50, { 50: 3 })).toBe(true);
+    expect(isAllClear(45, { 45: 3 })).toBe(false);
+    expect(isAllClear(1, {})).toBe(false);
   });
 
   it('renders high-detail obstacle sprites (crate, chain, ice, laser) without runtime errors', () => {

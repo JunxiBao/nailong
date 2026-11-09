@@ -1634,14 +1634,19 @@ function main() {
     encodePngRGBA(tileStrip.width, tileStrip.height, tileStrip.rgba)
   );
 
-  console.log('4) Painting 320x200 16-bit Pixel Scenic Backgrounds for Chapters 1, 2, and 3...');
-  for (const chapId of [1, 2, 3]) {
+  console.log('4) Painting 320x200 16-bit Pixel Scenic Backgrounds for Chapters 1..5 & All-Clear Firecracker Celebration...');
+  for (const chapId of [1, 2, 3, 4, 5]) {
     const bgRgba = buildChapterBackground(chapId);
     fs.writeFileSync(
       path.join(MODEL_OUT_DIR, `bg_chapter_${chapId}.png`),
       encodePngRGBA(320, 200, bgRgba)
     );
   }
+  const allClearRgba = buildAllClearBackground();
+  fs.writeFileSync(
+    path.join(MODEL_OUT_DIR, 'bg_all_clear.png'),
+    encodePngRGBA(320, 200, allClearRgba)
+  );
 
   fs.rmSync(TMP_DIR, { recursive: true, force: true });
   console.log('All high-precision 3D SDF pixel models & stickers built successfully!');
@@ -1799,7 +1804,7 @@ function buildChapterBackground(chapId) {
     fillCircle(268, 134, 24, 251, 207, 232); // Strawberry scoop
     fillCircle(244, 140, 20, 167, 243, 208); // Mint scoop
     fillCircle(268, 110, 6, 244, 63, 94);    // Red cherry on top
-  } else {
+  } else if (chapId === 3) {
     // 🚀 Chapter 3: Minion Mecha Fortress (紫兵机械堡)
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
@@ -1855,7 +1860,382 @@ function buildChapterBackground(chapId) {
         setPx(x, y, yellow ? 250 : 30, yellow ? 204 : 27, yellow ? 21 : 46);
       }
     }
+  } else if (chapId === 4) {
+    // 🌋 Chapter 4: Lava BBQ Valley (熔岩烤肉谷)
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (y < 112) {
+          // Fiery volcanic dusk sky: deep ruby red -> blazing orange -> golden sunset
+          const st = y / 112;
+          const smokeWave = Math.sin(x * 0.04 + y * 0.06) * 12;
+          setPx(
+            x,
+            y,
+            Math.min(255, Math.max(0, Math.round(180 + st * 75 + smokeWave))),
+            Math.min(255, Math.max(0, Math.round(28 + st * 105))),
+            Math.min(255, Math.max(0, Math.round(28 + st * 40 - smokeWave * 0.5)))
+          );
+        } else if (y < 152) {
+          // Volcanic mountain ridges & lava cascades
+          const m = 120 + Math.sin(x * 0.03) * 16 + Math.cos(x * 0.08) * 8;
+          if (y < m) {
+            setPx(x, y, 75, 25, 25);
+          } else {
+            // Lava streams flowing down
+            const isLava = (x + Math.floor(y * 1.5)) % 38 < 6;
+            if (isLava) {
+              setPx(x, y, 255, 87, 34);
+            } else {
+              setPx(x, y, 50, 20, 24);
+            }
+          }
+        } else {
+          // Charcoal BBQ Terrace / Magma Basin
+          const bt = (y - 152) / 48;
+          const grid = ((x >> 3) ^ (y >> 3)) & 1;
+          const isLavaRiver = Math.abs(y - (175 + Math.sin(x * 0.035) * 12)) < 5;
+          if (isLavaRiver) {
+            setPx(x, y, 255, 160, 0);
+          } else {
+            setPx(
+              x,
+              y,
+              Math.round(48 + grid * 12 + bt * 20),
+              Math.round(24 + grid * 6),
+              Math.round(28 + grid * 6)
+            );
+          }
+        }
+      }
+    }
+    // Twin Smoking Volcanic Calderas
+    // Caldera 1 (left)
+    fillCircle(64, 114, 24, 88, 28, 28);
+    fillCircle(64, 108, 12, 239, 68, 68);
+    fillCircle(64, 107, 7, 254, 240, 138); // glowing lava pool
+    // Caldera 2 (right)
+    fillCircle(252, 110, 28, 88, 28, 28);
+    fillCircle(252, 104, 14, 239, 68, 68);
+    fillCircle(252, 103, 8, 254, 240, 138);
+    // Billowing smoke plumes rising from volcanoes
+    for (const [vx, vy] of [
+      [64, 98],
+      [252, 94],
+    ]) {
+      for (let s = 0; s < 5; s++) {
+        const sy = vy - s * 14;
+        const sx = vx + Math.sin(s * 1.2) * 8;
+        fillCircle(sx, sy, 8 + s * 3, 70, 40, 40);
+        fillCircle(sx - 3, sy - 2, 6 + s * 2.5, 90, 55, 55);
+      }
+    }
+    // Giant Stone BBQ Grill & Skewered Roasted Drumsticks on right terrace!
+    fillRect(210, 150, 80, 22, 64, 30, 30); // Stone grill base
+    fillRect(212, 152, 76, 5, 239, 68, 68); // Glowing coals
+    fillRect(214, 153, 72, 3, 254, 240, 138); // Hot embers
+    // Metal grill grates
+    for (let gx = 214; gx < 286; gx += 6) {
+      fillRect(gx, 148, 2, 6, 203, 213, 225);
+    }
+    // Sizzling Golden Drumsticks on skewers
+    for (const [dx, dy] of [
+      [226, 144],
+      [250, 143],
+      [274, 144],
+    ]) {
+      fillCircle(dx, dy, 7, 217, 119, 6);
+      fillCircle(dx, dy, 5, 245, 158, 11);
+      fillRect(dx - 10, dy - 1, 20, 2, 226, 232, 240); // skewer stick
+      fillCircle(dx + 6, dy - 1, 3, 254, 243, 199); // bone tip
+    }
+    // Glowing floating fire embers/sparks in air
+    for (let i = 0; i < 35; i++) {
+      const ex = (i * 47 + 23) % W;
+      const ey = (i * 31 + 17) % 150;
+      setPx(ex, ey, 255, 234, 0);
+      setPx(ex + 1, ey, 255, 87, 34);
+    }
+  } else {
+    // 🌌 Chapter 5: Galactic Gourmet Palace (星河吃货殿)
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (y < 125) {
+          // Astral Cosmic Gradient: Midnight navy -> Cosmic violet -> Celestial magenta
+          const st = y / 125;
+          const nebula = Math.sin(x * 0.03 + y * 0.04) * 15 + Math.cos(x * 0.07 - y * 0.03) * 12;
+          setPx(
+            x,
+            y,
+            Math.min(255, Math.max(0, Math.round(18 + st * 90 + nebula))),
+            Math.min(255, Math.max(0, Math.round(12 + st * 45 + nebula * 0.4))),
+            Math.min(255, Math.max(0, Math.round(55 + st * 110 + nebula * 0.8)))
+          );
+        } else if (y < 160) {
+          // Floating Starlight Palace Spires & Arches
+          const m = 135 + Math.sin(x * 0.045) * 10;
+          if (y < m) {
+            setPx(x, y, 46, 16, 101);
+          } else {
+            setPx(x, y, 30, 10, 70);
+          }
+        } else {
+          // Shimmering Astral Marble Terrace
+          const bt = (y - 160) / 40;
+          const grid = ((x >> 3) ^ (y >> 3)) & 1;
+          setPx(
+            x,
+            y,
+            Math.round(40 + grid * 18 + bt * 30),
+            Math.round(25 + grid * 12 + bt * 20),
+            Math.round(95 + grid * 25 + bt * 40)
+          );
+        }
+      }
+    }
+    // Starfield with glowing celestial constellations
+    for (let i = 0; i < 65; i++) {
+      const sx = (i * 61 + 17) % W;
+      const sy = (i * 37 + 11) % 115;
+      const col = i % 4;
+      if (col === 0) setPx(sx, sy, 255, 255, 255);
+      else if (col === 1) setPx(sx, sy, 250, 204, 21);
+      else if (col === 2) setPx(sx, sy, 56, 189, 248);
+      else setPx(sx, sy, 244, 114, 182);
+    }
+    // Giant Planet Donut in top-left sky! (Pink strawberry frosting, white sprinkles, cyan planetary ring)
+    fillCircle(72, 42, 22, 217, 119, 6); // dough
+    fillCircle(72, 42, 19, 244, 114, 182); // strawberry glaze
+    fillCircle(72, 42, 7, 28, 16, 75); // donut hole
+    // Planetary Ring
+    for (let a = 0; a < 360; a += 3) {
+      const rad = (a * Math.PI) / 180;
+      const rx = 72 + Math.cos(rad) * 36;
+      const ry = 42 + Math.sin(rad) * 9 - Math.cos(rad) * 5;
+      if (Math.sin(rad) > 0 || Math.hypot(rx - 72, ry - 42) > 22) {
+        setPx(rx, ry, 56, 189, 248);
+        setPx(rx, ry + 1, 254, 240, 138);
+      }
+    }
+    // Golden Palace Columns & Majestic Gourmet Banquet on Terrace
+    for (const cx of [36, 100, 220, 284]) {
+      fillRect(cx, 122, 14, 55, 234, 179, 8); // Gold column
+      fillRect(cx + 3, 122, 8, 55, 254, 240, 138); // Highlight
+      fillRect(cx - 3, 120, 20, 5, 250, 204, 21); // Capital
+    }
+    // Palace Glowing Arch between columns
+    for (let x = 36; x <= 114; x++) {
+      const archY = 120 - Math.round(Math.sin(((x - 36) / 78) * Math.PI) * 16);
+      fillRect(x, archY, 1, 3, 56, 189, 248);
+    }
+    for (let x = 220; x <= 298; x++) {
+      const archY = 120 - Math.round(Math.sin(((x - 220) / 78) * Math.PI) * 16);
+      fillRect(x, archY, 1, 3, 56, 189, 248);
+    }
+    // Celestial Banquet Table in center (x: 130..190)
+    fillRect(132, 160, 56, 16, 254, 240, 138); // Golden table cloth
+    fillRect(134, 162, 52, 12, 255, 255, 255);
+    // Delicacies on table: giant cake & glowing drumstick
+    fillCircle(148, 155, 6, 236, 72, 153);
+    fillCircle(148, 152, 2, 239, 68, 68);
+    fillCircle(172, 155, 7, 245, 158, 11);
   }
+  return rgba;
+}
+
+function buildAllClearBackground() {
+  const W = 320;
+  const H = 200;
+  const rgba = new Uint8Array(W * H * 4);
+  const setPx = (x, y, r, g, b) => {
+    const ix = Math.round(x);
+    const iy = Math.round(y);
+    if (ix < 0 || ix >= W || iy < 0 || iy >= H) return;
+    const o = (iy * W + ix) * 4;
+    rgba[o] = r;
+    rgba[o + 1] = g;
+    rgba[o + 2] = b;
+    rgba[o + 3] = 255;
+  };
+  const fillCircle = (cx, cy, rad, r, g, b) => {
+    const r2 = rad * rad;
+    for (let dy = -Math.ceil(rad); dy <= Math.ceil(rad); dy++) {
+      for (let dx = -Math.ceil(rad); dx <= Math.ceil(rad); dx++) {
+        if (dx * dx + dy * dy <= r2) setPx(cx + dx, cy + dy, r, g, b);
+      }
+    }
+  };
+  const fillRect = (x0, y0, w, h, r, g, b) => {
+    for (let y = y0; y < y0 + h; y++) {
+      for (let x = x0; x < x0 + w; x++) setPx(x, y, r, g, b);
+    }
+  };
+
+  // 🧨 Festive Scarlet Night Sky (通关大吉·欢庆盛典放鞭炮)
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (y < 125) {
+        // Grand celebration festive night sky (rich deep crimson -> scarlet -> warm celebration gold)
+        const st = y / 125;
+        setPx(
+          x,
+          y,
+          Math.min(255, Math.round(110 + st * 95)),
+          Math.min(255, Math.round(12 + st * 28)),
+          Math.min(255, Math.round(24 + st * 32))
+        );
+      } else if (y < 155) {
+        // Traditional palace roofs with golden glazed tiles
+        const roof = 135 + Math.sin(x * 0.05) * 6;
+        if (y < roof) {
+          setPx(x, y, 160, 20, 25);
+        } else {
+          setPx(x, y, 195, 30, 35);
+        }
+      } else {
+        // Courtyard celebration plaza (crimson carpet in center, golden stones on sides)
+        const isCarpet = x >= 105 && x <= 215;
+        if (isCarpet) {
+          const carpetBorder = x <= 108 || x >= 212 || y % 12 === 0;
+          setPx(x, y, carpetBorder ? 250 : 220, carpetBorder ? 204 : 38, carpetBorder ? 21 : 38);
+        } else {
+          const stoneGrid = ((x >> 3) ^ (y >> 3)) & 1;
+          setPx(x, y, 180 + stoneGrid * 20, 140 + stoneGrid * 15, 70 + stoneGrid * 10);
+        }
+      }
+    }
+  }
+
+  // --- 1. Splendid Celebratory Fireworks Bursts (绚烂多姿像素烟花) ---
+  // Firework A: Golden Chrysanthemum (cx=88, cy=40, radius ~24)
+  for (let i = 0; i < 32; i++) {
+    const ang = (i * Math.PI * 2) / 32;
+    for (let r = 3; r <= 26; r++) {
+      if (r % 2 === 0 || r > 20) {
+        const fx = 88 + Math.cos(ang) * r;
+        const fy = 40 + Math.sin(ang) * (r * 0.85);
+        const isCore = r < 10;
+        setPx(fx, fy, isCore ? 255 : 250, isCore ? 255 : 204, isCore ? 230 : 21);
+      }
+    }
+  }
+  fillCircle(88, 40, 4, 255, 255, 255);
+
+  // Firework B: Radiant Magenta & Ruby Peony Burst (cx=232, cy=36, radius ~26)
+  for (let i = 0; i < 28; i++) {
+    const ang = (i * Math.PI * 2) / 28;
+    for (let r = 4; r <= 28; r++) {
+      if (r % 3 !== 0) {
+        const fx = 232 + Math.cos(ang) * r;
+        const fy = 36 + Math.sin(ang) * (r * 0.88);
+        const isOuter = r > 18;
+        setPx(fx, fy, isOuter ? 244 : 255, isOuter ? 114 : 200, isOuter ? 182 : 230);
+      }
+    }
+  }
+  fillCircle(232, 36, 4, 255, 255, 255);
+
+  // Firework C: Emerald Green & Cyan Starburst in upper center (cx=160, cy=30)
+  for (let i = 0; i < 24; i++) {
+    const ang = (i * Math.PI * 2) / 24;
+    for (let r = 3; r <= 22; r++) {
+      if (r % 2 === 0) {
+        const fx = 160 + Math.cos(ang) * r;
+        const fy = 30 + Math.sin(ang) * r;
+        setPx(fx, fy, r < 8 ? 255 : 52, r < 8 ? 255 : 211, r < 8 ? 255 : 153);
+      }
+    }
+  }
+  fillCircle(160, 30, 3, 255, 255, 255);
+
+  // --- 2. Grand Festive Red Lanterns (大红灯笼高高挂) ---
+  for (const [lx, ly] of [
+    [48, 70],
+    [272, 70],
+  ]) {
+    // Hanging cord
+    fillRect(lx, ly - 25, 2, 25, 120, 20, 20);
+    // Lantern cap (black & gold)
+    fillRect(lx - 8, ly, 18, 4, 30, 20, 20);
+    fillRect(lx - 6, ly + 1, 14, 2, 250, 204, 21);
+    // Oval Red Lantern Body
+    fillCircle(lx + 1, ly + 16, 15, 220, 38, 38);
+    fillCircle(lx + 1, ly + 16, 11, 239, 68, 68);
+    // Golden center candle light
+    fillCircle(lx + 1, ly + 16, 6, 254, 240, 138);
+    fillCircle(lx + 1, ly + 16, 3, 255, 255, 255);
+    // Gold ribs
+    for (let dy = 2; dy <= 30; dy += 2) {
+      setPx(lx + 1, ly + dy, 250, 204, 21);
+      setPx(lx - 7, ly + dy, 250, 204, 21);
+      setPx(lx + 9, ly + dy, 250, 204, 21);
+    }
+    // Lantern bottom cap
+    fillRect(lx - 8, ly + 31, 18, 4, 30, 20, 20);
+    fillRect(lx - 6, ly + 32, 14, 2, 250, 204, 21);
+    // Gold Tassels hanging down
+    for (let ty = 0; ty < 16; ty++) {
+      fillRect(lx - 2, ly + 35 + ty, 6, 1, 250, 204, 21);
+    }
+  }
+
+  // --- 3. Crackling Strings of Red Firecrackers (长串大红鞭炮放起来！) ---
+  for (const [bx, isLeft] of [
+    [26, true],
+    [294, false],
+  ]) {
+    // Firecracker hanging string
+    fillRect(bx + 3, 60, 2, 90, 80, 20, 20);
+    // Red firecracker rolls dangling along the cord
+    for (let i = 0; i < 18; i++) {
+      const cy = 65 + i * 5;
+      const xOff = (i % 2 === 0 ? -4 : 4) * (isLeft ? 1 : -1);
+      fillRect(bx + xOff, cy, 7, 3, 220, 38, 38);
+      setPx(bx + xOff + 3, cy, 254, 240, 138); // gold band
+    }
+    // ACTIVE DETONATION BURST AT BOTTOM (噼里啪啦正在放响！)
+    const detX = bx + (isLeft ? -2 : 2);
+    const detY = 158;
+    // Dazzling white-hot explosive flare
+    fillCircle(detX, detY, 9, 255, 255, 255);
+    fillCircle(detX, detY, 6, 254, 240, 138);
+    fillCircle(detX, detY, 3, 255, 255, 255);
+    // Flying explosive golden sparks & red paper fragments
+    for (let a = 0; a < 16; a++) {
+      const ang = (a * Math.PI * 2) / 16;
+      const spDist = 12 + (a % 5) * 4;
+      const sx = detX + Math.cos(ang) * spDist;
+      const sy = detY + Math.sin(ang) * spDist * 0.75;
+      setPx(sx, sy, 255, 234, 0);
+      setPx(sx + 1, sy, 255, 87, 34);
+      // Fragment paper
+      if (a % 2 === 0) {
+        setPx(sx - 2, sy + 2, 220, 38, 38);
+      }
+    }
+    // Billowing celebratory smoke clouds near firecracker blast
+    for (const [smX, smY, smR] of [
+      [detX + 10, detY - 8, 7],
+      [detX - 8, detY - 6, 6],
+      [detX + 4, detY - 14, 8],
+    ]) {
+      fillCircle(smX, smY, smR, 240, 240, 245);
+      fillCircle(smX + 2, smY - 1, smR - 2, 255, 255, 255);
+    }
+  }
+
+  // --- 4. Raining Celebration Confetti (金红飞舞彩花纸屑) ---
+  for (let i = 0; i < 70; i++) {
+    const cx = (i * 43 + 19) % W;
+    const cy = (i * 29 + 13) % 180;
+    const colType = i % 5;
+    if (colType === 0) setPx(cx, cy, 250, 204, 21); // gold
+    else if (colType === 1) setPx(cx, cy, 239, 68, 68); // scarlet
+    else if (colType === 2) setPx(cx, cy, 244, 114, 182); // pink
+    else if (colType === 3) setPx(cx, cy, 56, 189, 248); // sky cyan
+    else setPx(cx, cy, 34, 197, 94); // jade green
+    setPx(cx + 1, cy, 255, 255, 255); // spark glint
+  }
+
   return rgba;
 }
 

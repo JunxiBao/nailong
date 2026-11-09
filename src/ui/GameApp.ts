@@ -27,6 +27,7 @@ import {
   createDefaultBoosters,
   ENDLESS_LEVEL,
   getChapterStars,
+  isAllClear,
   isChapterUnlocked,
   isLevelUnlocked,
   loadProgress,
@@ -352,14 +353,20 @@ export class GameApp {
     this.boardCanvas = null;
 
     if (typeof document !== 'undefined' && document.body) {
-      // Title screen & Endless mode use the player's furthest reached chapter background
-      const reachedChap = this.getFurthestUnlockedChapter();
-      const chapId =
-        this.screen === 'title' || (this.screen === 'play' && this.isEndless)
-          ? reachedChap
-          : Math.min(3, Math.max(1, this.selectedChapter));
-      document.body.className = `theme-chap-${chapId}`;
-      document.documentElement.className = `theme-chap-${chapId}`;
+      const allDone = isAllClear(this.progress.unlockedLevel, this.progress.levelStars);
+      if (allDone) {
+        document.body.className = 'theme-all-clear';
+        document.documentElement.className = 'theme-all-clear';
+      } else {
+        // Title screen & Endless mode use the player's furthest reached chapter background
+        const reachedChap = this.getFurthestUnlockedChapter();
+        const chapId =
+          this.screen === 'title' || (this.screen === 'play' && this.isEndless)
+            ? reachedChap
+            : Math.min(CAMPAIGN_CHAPTERS.length, Math.max(1, this.selectedChapter));
+        document.body.className = `theme-chap-${chapId}`;
+        document.documentElement.className = `theme-chap-${chapId}`;
+      }
     }
 
     if (this.screen === 'title') {
@@ -382,6 +389,13 @@ export class GameApp {
     this.root.innerHTML = `
       <div class="pixel-box title-screen">
         <div class="title-badge">★ 16-BIT PIXEL PUZZLE PARTY ★</div>
+        ${
+          isAllClear(this.progress.unlockedLevel, this.progress.levelStars)
+            ? `<div style="background:#dc2626;color:#fef08a;border:3px solid #2b1e16;padding:6px 14px;font-weight:900;font-size:13px;box-shadow:0 3px 0 #2b1e16;margin-bottom:8px;">
+                 🧨 恭喜全通关 50 关！全城放鞭炮为你庆功！
+               </div>`
+            : ''
+        }
         <h1 class="game-logo">奶龙消消乐</h1>
         <div class="title-sub">大肚肚美食派对 · 收集烤鸡腿 · 弹飞暴暴龙！</div>
 
@@ -522,6 +536,14 @@ export class GameApp {
           <div class="map-title">${activeChap.title} (${activeChapStars}/30★)</div>
           <div class="star-pill">★ ${totalStars} / ${maxStars}</div>
         </div>
+
+        ${
+          isAllClear(this.progress.unlockedLevel, this.progress.levelStars)
+            ? `<div style="background:#dc2626;color:#fef08a;border:2px solid #2b1e16;padding:4px 10px;font-weight:900;font-size:12px;margin-bottom:8px;text-align:center;">
+                 🧨 50关全部通关！全城放鞭炮盛典进行中！
+               </div>`
+            : ''
+        }
 
         <div class="chapter-tabs">
           ${chapterTabsHtml}
@@ -1729,6 +1751,13 @@ export class GameApp {
                  </div>`
               : ''
           }
+          ${
+            this.currentLevel.id === CAMPAIGN_LEVELS.length
+              ? `<div style="background:#fef2f2;border:3px solid #dc2626;padding:8px 12px;margin:8px 0;font-size:13px;font-weight:900;color:#b91c1c;">
+                   🧨 旷世大圆满！你已通关全部 50 关！<br/>全服背景已切换为【全城放鞭炮盛典】，奶龙加冕宇宙终极食神！
+                 </div>`
+              : ''
+          }
           ${starGateHint}
           <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
             ${
@@ -2064,10 +2093,15 @@ export class GameApp {
         const isEven = (r + c) % 2 === 0;
 
         // Chapter-themed checkerboard cell
+        const isCompletedAll = isAllClear(this.progress.unlockedLevel, this.progress.levelStars);
         const chapTheme = this.isEndless
-          ? Math.min(3, Math.max(1, Math.ceil(this.progress.unlockedLevel / 10)))
-          : Math.min(3, Math.max(1, this.selectedChapter));
-        if (chapTheme === 2) {
+          ? Math.min(5, Math.max(1, Math.ceil(this.progress.unlockedLevel / 10)))
+          : Math.min(5, Math.max(1, this.selectedChapter));
+        if (isCompletedAll && !this.isEndless && this.selectedChapter === 5) {
+          ctx.fillStyle = isEven ? '#FFFBEB' : '#FEE2E2';
+          ctx.fillRect(x + 1, y + 1, CELL_PX - 2, CELL_PX - 2);
+          ctx.strokeStyle = '#F59E0B';
+        } else if (chapTheme === 2) {
           ctx.fillStyle = isEven ? '#FFF1F2' : '#E0F2FE';
           ctx.fillRect(x + 1, y + 1, CELL_PX - 2, CELL_PX - 2);
           ctx.strokeStyle = '#93C5FD';
@@ -2075,6 +2109,14 @@ export class GameApp {
           ctx.fillStyle = isEven ? '#FAF5FF' : '#EDE9FE';
           ctx.fillRect(x + 1, y + 1, CELL_PX - 2, CELL_PX - 2);
           ctx.strokeStyle = '#C084FC';
+        } else if (chapTheme === 4) {
+          ctx.fillStyle = isEven ? '#FFF1F2' : '#FFEDD5';
+          ctx.fillRect(x + 1, y + 1, CELL_PX - 2, CELL_PX - 2);
+          ctx.strokeStyle = '#FB923C';
+        } else if (chapTheme === 5) {
+          ctx.fillStyle = isEven ? '#EEF2FF' : '#E0E7FF';
+          ctx.fillRect(x + 1, y + 1, CELL_PX - 2, CELL_PX - 2);
+          ctx.strokeStyle = '#818CF8';
         } else {
           ctx.fillStyle = isEven ? '#FFFBEB' : '#FEF3C7';
           ctx.fillRect(x + 1, y + 1, CELL_PX - 2, CELL_PX - 2);

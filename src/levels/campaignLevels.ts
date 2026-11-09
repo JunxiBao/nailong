@@ -15,7 +15,7 @@ export const CAMPAIGN_CHAPTERS: ChapterMeta[] = [
   {
     id: 1,
     title: '🌴 第1章 · 阳光野餐岛',
-    shortTitle: '🌴 野餐岛 (1-10)',
+    shortTitle: '🌴 野餐 (1-10)',
     startLevel: 1,
     endLevel: 10,
     bgGradient: 'linear-gradient(180deg, #dcfce7 0%, #bbf7d0 50%, #fef9c3 100%)',
@@ -25,7 +25,7 @@ export const CAMPAIGN_CHAPTERS: ChapterMeta[] = [
   {
     id: 2,
     title: '🍨 第2章 · 冰晶甜品湾',
-    shortTitle: '🍨 甜品湾 (11-20)',
+    shortTitle: '🍨 甜品 (11-20)',
     startLevel: 11,
     endLevel: 20,
     bgGradient: 'linear-gradient(180deg, #e0f2fe 0%, #bae6fd 50%, #fce7f3 100%)',
@@ -35,16 +35,40 @@ export const CAMPAIGN_CHAPTERS: ChapterMeta[] = [
   {
     id: 3,
     title: '🚀 第3章 · 紫兵机械堡',
-    shortTitle: '🚀 机械堡 (21-30)',
+    shortTitle: '🚀 机械 (21-30)',
     startLevel: 21,
     endLevel: 30,
     bgGradient: 'linear-gradient(180deg, #f3e8ff 0%, #e9d5ff 50%, #fef3c7 100%)',
     bgImage: '/assets/models/bg_chapter_3.png',
-    tip: '💡 解锁本章需第2章获得≥25★！第 25 关与第 30 关为终极 Boss 战！',
+    tip: '💡 解锁本章需第2章获得≥25★！第 25 关与第 30 关为 Boss 战！',
+  },
+  {
+    id: 4,
+    title: '🌋 第4章 · 熔岩烤肉谷',
+    shortTitle: '🌋 烤肉 (31-40)',
+    startLevel: 31,
+    endLevel: 40,
+    bgGradient: 'linear-gradient(180deg, #fef2f2 0%, #fee2e2 50%, #ffedd5 100%)',
+    bgImage: '/assets/models/bg_chapter_4.png',
+    tip: '💡 解锁本章需第3章获得≥25★！第 35 关与第 40 关为【熔岩暴暴龙 Boss 战】！',
+  },
+  {
+    id: 5,
+    title: '🌌 第5章 · 星河吃货殿',
+    shortTitle: '🌌 星河 (41-50)',
+    startLevel: 41,
+    endLevel: 50,
+    bgGradient: 'linear-gradient(180deg, #e0e7ff 0%, #ede9fe 50%, #fef3c7 100%)',
+    bgImage: '/assets/models/bg_chapter_5.png',
+    tip: '💡 解锁本章需第4章获得≥25★！第 45 关与第 50 关为【终极食神 Boss 战】！',
   },
 ];
 
 export const REQUIRED_CHAPTER_STARS = 25;
+
+export function isAllClear(unlockedLevel: number, levelStars: Record<number, number>): boolean {
+  return unlockedLevel > 50 || (levelStars[50] ?? 0) > 0;
+}
 
 export function getChapterStars(levelStars: Record<number, number>, chapterId: number): number {
   const chap = CAMPAIGN_CHAPTERS.find((c) => c.id === chapterId);
@@ -440,6 +464,232 @@ const L30_ULTIMATE_BOSS_LAYOUT = [
   '.c.22.c.',
   '..1221..',
   '.C.LL.C.',
+  '#......#',
+];
+
+// ============================================================================
+// CHAPTER 4 LAYOUTS (Levels 31 - 40): Lava BBQ Valley
+// ============================================================================
+const L31_VOLCANO_GATE_LAYOUT = [
+  '#......#',
+  '.c.11.c.',
+  '..1221..',
+  '..1221..',
+  '..1221..',
+  '..1221..',
+  '.c.11.c.',
+  '#......#',
+];
+
+const L32_LAVA_RIVER_LAYOUT = [
+  '........',
+  '.c....c.',
+  '..L..L..',
+  '#..11..#',
+  '#..11..#',
+  '..L..L..',
+  '.c....c.',
+  '........',
+];
+
+const L33_BBQ_GRILL_LAYOUT = [
+  '.#....#.',
+  '..c..c..',
+  '.1C..C1.',
+  '.12..21.',
+  '.12..21.',
+  '.1C..C1.',
+  '..c..c..',
+  '.#....#.',
+];
+
+const L34_MAGMA_CHASM_LAYOUT = [
+  '##....##',
+  '#.1221.#',
+  '.c1CC1c.',
+  '..L..L..',
+  '..L..L..',
+  '.c1CC1c.',
+  '#.1221.#',
+  '##....##',
+];
+
+const L35_BOSS_LAVA_LAYOUT = [
+  '#......#',
+  '.C.11.C.',
+  '..L22L..',
+  '.1....1.',
+  '.1....1.',
+  '..L22L..',
+  '.C.11.C.',
+  '#......#',
+];
+
+const L36_SPICY_CRATER_LAYOUT = [
+  '........',
+  '.1c..c1.',
+  '.c1221c.',
+  '..2CC2..',
+  '..2CC2..',
+  '.c1221c.',
+  '.1c..c1.',
+  '........',
+];
+
+const L37_LAVA_FALLS_LAYOUT = [
+  '#..##..#',
+  '..1221..',
+  '.c.LL.c.',
+  '..1..1..',
+  '..1..1..',
+  '.c.LL.c.',
+  '..1221..',
+  '#..##..#',
+];
+
+const L38_CROSS_FORTRESS_LAYOUT = [
+  '..#..#..',
+  '.c1221c.',
+  '#1LCCL1#',
+  '..CCCC..',
+  '..CCCC..',
+  '#1LCCL1#',
+  '.c1221c.',
+  '..#..#..',
+];
+
+const L39_GRILL_MASTER_LAYOUT = [
+  '#......#',
+  '.1CLLC1.',
+  '.c1221c.',
+  '.C2..2C.',
+  '.C2..2C.',
+  '.c1221c.',
+  '.1CLLC1.',
+  '#......#',
+];
+
+const L40_BOSS_LAVA_OVERLORD_LAYOUT = [
+  '#......#',
+  '.C1221C.',
+  '..LCCL..',
+  '.1.22.1.',
+  '.1.22.1.',
+  '..LCCL..',
+  '.C1221C.',
+  '#......#',
+];
+
+// ============================================================================
+// CHAPTER 5 LAYOUTS (Levels 41 - 50): Galactic Gourmet Palace
+// ============================================================================
+const L41_STAR_STAIRS_LAYOUT = [
+  '#......#',
+  '.1....1.',
+  '..1c.1..',
+  '...c1...',
+  '...1c...',
+  '..1.c1..',
+  '.1....1.',
+  '#......#',
+];
+
+const L42_DONUT_NEBULA_LAYOUT = [
+  '##....##',
+  '#122221#',
+  '.2.LL.2.',
+  '.2L##L2.',
+  '.2L##L2.',
+  '.2.LL.2.',
+  '#122221#',
+  '##....##',
+];
+
+const L43_CONSTELLATION_LAYOUT = [
+  '........',
+  '.c.11.c.',
+  '..1221..',
+  '.12CC21.',
+  '.12CC21.',
+  '..1221..',
+  '.c.11.c.',
+  '........',
+];
+
+const L44_ASTRAL_PYRAMID_LAYOUT = [
+  '...##...',
+  '..1221..',
+  '.1cCCc1.',
+  '.12CC21.',
+  '..LCCL..',
+  '.12CC21.',
+  '..1221..',
+  '...##...',
+];
+
+const L45_BOSS_CELESTIAL_LAYOUT = [
+  '#......#',
+  '.1.LL.1.',
+  '..c22c..',
+  '.L2CC2L.',
+  '.L2CC2L.',
+  '..c22c..',
+  '.1.LL.1.',
+  '#......#',
+];
+
+const L46_GALACTIC_BANQUET_LAYOUT = [
+  '........',
+  '.c.11.c.',
+  '.1.22.1.',
+  '..cCCc..',
+  '..cCCc..',
+  '.1.22.1.',
+  '.c.11.c.',
+  '........',
+];
+
+const L47_STELLAR_REACTOR_LAYOUT = [
+  '#..##..#',
+  '.1c..c1.',
+  '.c1CC1c.',
+  '#..LL..#',
+  '#..LL..#',
+  '.c1CC1c.',
+  '.1c..c1.',
+  '#..##..#',
+];
+
+const L48_COSMIC_SEAL_LAYOUT = [
+  '##....##',
+  '#12CC21#',
+  '.2L..L2.',
+  '.CL..LC.',
+  '.CL..LC.',
+  '.2L..L2.',
+  '#12CC21#',
+  '##....##',
+];
+
+const L49_ROAD_TO_THRONES_LAYOUT = [
+  '........',
+  '.C1221C.',
+  '.1cLLc1.',
+  '.2LCCL2.',
+  '.2LCCL2.',
+  '.1cLLc1.',
+  '.C1221C.',
+  '........',
+];
+
+const L50_GRAND_FINALE_BOSS_LAYOUT = [
+  '#......#',
+  '.C1221C.',
+  '.1LCCL1.',
+  '.2CC22C.',
+  '.C22CC2.',
+  '.1LCCL1.',
+  '.C1221C.',
   '#......#',
 ];
 
@@ -922,22 +1172,361 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
   },
   {
     id: 30,
-    name: '第30关 · 【终极Boss】宇宙食神大决战',
-    subtitle: '全 30 关巅峰之战！火力全开释放双彩虹与肚肚泰山压顶，加冕宇宙食神！',
+    name: '第30关 · 【机械Boss】紫兵要塞决战',
+    subtitle: '机械堡终极要塞决战！粉碎紫兵要塞核心防御，迎接通往熔岩烤肉谷的传送门！',
     rows: 8,
     cols: 8,
-    moves: 30,
+    moves: 29,
     colorsCount: 6,
     starScores: [4500, 9500, 15000],
-    bossMaxHp: 1680,
+    bossMaxHp: 1500,
     bossAttackInterval: 3,
     goals: [
-      { type: 'boss', target: 1680 },
+      { type: 'boss', target: 1500 },
       { type: 'crate', target: countLayoutLayers(L30_ULTIMATE_BOSS_LAYOUT, 'crate') },
       { type: 'ice', target: countLayoutLayers(L30_ULTIMATE_BOSS_LAYOUT, 'ice') },
       { type: 'chain', target: countLayoutLayers(L30_ULTIMATE_BOSS_LAYOUT, 'chain') },
     ],
     layout: L30_ULTIMATE_BOSS_LAYOUT,
+  },
+  // -------------------- CHAPTER 4 (Levels 31 - 40) --------------------
+  {
+    id: 31,
+    name: '第31关 · 熔岩谷入口 · 炭烤前哨',
+    subtitle: '踏入炙热熔岩烤肉谷！高温热浪封锁通道，粉碎烤架木箱与薄冰！',
+    rows: 8,
+    cols: 8,
+    moves: 24,
+    colorsCount: 6,
+    starScores: [3200, 7500, 15500],
+    goals: [
+      { type: 'crate', target: countLayoutLayers(L31_VOLCANO_GATE_LAYOUT, 'crate') },
+      { type: 'ice', target: countLayoutLayers(L31_VOLCANO_GATE_LAYOUT, 'ice') },
+    ],
+    layout: L31_VOLCANO_GATE_LAYOUT,
+  },
+  {
+    id: 32,
+    name: '第32关 · 炙热火山道 · 串串阵地',
+    subtitle: '解开铁链束缚，收集 20 只外焦里嫩的火山特制烤鸡腿！',
+    rows: 8,
+    cols: 8,
+    moves: 24,
+    colorsCount: 6,
+    starScores: [3400, 7800, 15800],
+    goals: [
+      { type: 'chain', target: countLayoutLayers(L32_LAVA_RIVER_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L32_LAVA_RIVER_LAYOUT, 'ice') },
+      { type: 'crate', target: countLayoutLayers(L32_LAVA_RIVER_LAYOUT, 'crate') },
+      { type: 'collect', color: 'drumstick', target: 20 },
+    ],
+    layout: L32_LAVA_RIVER_LAYOUT,
+  },
+  {
+    id: 33,
+    name: '第33关 · 滚烫岩浆池 · 鸡腿大丰收',
+    subtitle: '利用横竖火箭与炸弹组合穿透烤架，大量收集鸡腿饱餐一顿！',
+    rows: 8,
+    cols: 8,
+    moves: 25,
+    colorsCount: 6,
+    starScores: [3600, 8200, 16200],
+    goals: [
+      { type: 'ice', target: countLayoutLayers(L33_BBQ_GRILL_LAYOUT, 'ice') },
+      { type: 'crate', target: countLayoutLayers(L33_BBQ_GRILL_LAYOUT, 'crate') },
+      { type: 'collect', color: 'drumstick', target: 22 },
+    ],
+    layout: L33_BBQ_GRILL_LAYOUT,
+  },
+  {
+    id: 34,
+    name: '第34关 · 巨石烤肉架 · 炭火双重破拆',
+    subtitle: '岩浆深渊裂谷！必须合力解开中央铁链并彻底击碎坚硬木箱！',
+    rows: 8,
+    cols: 8,
+    moves: 26,
+    colorsCount: 6,
+    starScores: [3800, 8600, 16500],
+    goals: [
+      { type: 'crate', target: countLayoutLayers(L34_MAGMA_CHASM_LAYOUT, 'crate') },
+      { type: 'ice', target: countLayoutLayers(L34_MAGMA_CHASM_LAYOUT, 'ice') },
+      { type: 'chain', target: countLayoutLayers(L34_MAGMA_CHASM_LAYOUT, 'chain') },
+    ],
+    layout: L34_MAGMA_CHASM_LAYOUT,
+  },
+  {
+    id: 35,
+    name: '第35关 · 【Boss战】暴暴龙·熔岩烤肉形态',
+    subtitle: '暴暴龙披上熔岩铠甲！每3回合投掷岩浆碎石，全力轰击Boss！',
+    rows: 8,
+    cols: 8,
+    moves: 27,
+    colorsCount: 6,
+    starScores: [4200, 9500, 16800],
+    bossMaxHp: 1350,
+    bossAttackInterval: 3,
+    goals: [
+      { type: 'boss', target: 1350 },
+      { type: 'crate', target: countLayoutLayers(L35_BOSS_LAVA_LAYOUT, 'crate') },
+      { type: 'chain', target: countLayoutLayers(L35_BOSS_LAVA_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L35_BOSS_LAVA_LAYOUT, 'ice') },
+    ],
+    layout: L35_BOSS_LAVA_LAYOUT,
+  },
+  {
+    id: 36,
+    name: '第36关 · 辣椒火山坑 · 连环爆燃',
+    subtitle: '火辣冲击！收集草莓解辣，制造大面积连击破除中心坚冰！',
+    rows: 8,
+    cols: 8,
+    moves: 26,
+    colorsCount: 6,
+    starScores: [4400, 9800, 17200],
+    goals: [
+      { type: 'crate', target: countLayoutLayers(L36_SPICY_CRATER_LAYOUT, 'crate') },
+      { type: 'ice', target: countLayoutLayers(L36_SPICY_CRATER_LAYOUT, 'ice') },
+      { type: 'collect', color: 'strawberry', target: 22 },
+    ],
+    layout: L36_SPICY_CRATER_LAYOUT,
+  },
+  {
+    id: 37,
+    name: '第37关 · 熔岩大瀑布 · 激流飞渡',
+    subtitle: '岩浆奔涌而下！突破双侧链条铁索，收集 20 份美味烤鸡腿！',
+    rows: 8,
+    cols: 8,
+    moves: 27,
+    colorsCount: 6,
+    starScores: [4600, 10200, 17500],
+    goals: [
+      { type: 'chain', target: countLayoutLayers(L37_LAVA_FALLS_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L37_LAVA_FALLS_LAYOUT, 'ice') },
+      { type: 'crate', target: countLayoutLayers(L37_LAVA_FALLS_LAYOUT, 'crate') },
+      { type: 'collect', color: 'drumstick', target: 20 },
+    ],
+    layout: L37_LAVA_FALLS_LAYOUT,
+  },
+  {
+    id: 38,
+    name: '第38关 · 铁签十字要塞 · 坚如磐石',
+    subtitle: '坚固的十字形双层加固木箱！制造彩虹球+火箭全屏清除障碍！',
+    rows: 8,
+    cols: 8,
+    moves: 28,
+    colorsCount: 6,
+    starScores: [4800, 10800, 17800],
+    goals: [
+      { type: 'crate', target: countLayoutLayers(L38_CROSS_FORTRESS_LAYOUT, 'crate') },
+      { type: 'chain', target: countLayoutLayers(L38_CROSS_FORTRESS_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L38_CROSS_FORTRESS_LAYOUT, 'ice') },
+    ],
+    layout: L38_CROSS_FORTRESS_LAYOUT,
+  },
+  {
+    id: 39,
+    name: '第39关 · 烤肉大师决战前夕',
+    subtitle: '多重封锁！收集暴暴龙徽记，解除熔岩终极大关的结界！',
+    rows: 8,
+    cols: 8,
+    moves: 28,
+    colorsCount: 6,
+    starScores: [5000, 11200, 18200],
+    goals: [
+      { type: 'crate', target: countLayoutLayers(L39_GRILL_MASTER_LAYOUT, 'crate') },
+      { type: 'chain', target: countLayoutLayers(L39_GRILL_MASTER_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L39_GRILL_MASTER_LAYOUT, 'ice') },
+      { type: 'collect', color: 'bombloong', target: 20 },
+    ],
+    layout: L39_GRILL_MASTER_LAYOUT,
+  },
+  {
+    id: 40,
+    name: '第40关 · 【第4章Boss】熔岩巨龙·霸王烤肉大决斗',
+    subtitle: '熔岩巨龙狂暴来袭！释放肚肚泰山压顶，赢得通往星河吃货殿的终极门票！',
+    rows: 8,
+    cols: 8,
+    moves: 30,
+    colorsCount: 6,
+    starScores: [5200, 11800, 18600],
+    bossMaxHp: 1580,
+    bossAttackInterval: 3,
+    goals: [
+      { type: 'boss', target: 1580 },
+      { type: 'crate', target: countLayoutLayers(L40_BOSS_LAVA_OVERLORD_LAYOUT, 'crate') },
+      { type: 'chain', target: countLayoutLayers(L40_BOSS_LAVA_OVERLORD_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L40_BOSS_LAVA_OVERLORD_LAYOUT, 'ice') },
+    ],
+    layout: L40_BOSS_LAVA_OVERLORD_LAYOUT,
+  },
+  // -------------------- CHAPTER 5 (Levels 41 - 50) --------------------
+  {
+    id: 41,
+    name: '第41关 · 星门启程 · 银河天梯',
+    subtitle: '步入星河吃货殿！星光阶梯蜿蜒向前，收集 24 只机智呆萌奶龙！',
+    rows: 8,
+    cols: 8,
+    moves: 26,
+    colorsCount: 6,
+    starScores: [5200, 12000, 19000],
+    goals: [
+      { type: 'ice', target: countLayoutLayers(L41_STAR_STAIRS_LAYOUT, 'ice') },
+      { type: 'crate', target: countLayoutLayers(L41_STAR_STAIRS_LAYOUT, 'crate') },
+      { type: 'collect', color: 'nailong', target: 24 },
+    ],
+    layout: L41_STAR_STAIRS_LAYOUT,
+  },
+  {
+    id: 42,
+    name: '第42关 · 甜甜圈星云 · 环形引力',
+    subtitle: '浩瀚甜甜圈星系！破开内圈环形双层厚冰，解救被锁链固定的图块！',
+    rows: 8,
+    cols: 8,
+    moves: 27,
+    colorsCount: 6,
+    starScores: [5400, 12400, 19400],
+    goals: [
+      { type: 'chain', target: countLayoutLayers(L42_DONUT_NEBULA_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L42_DONUT_NEBULA_LAYOUT, 'ice') },
+    ],
+    layout: L42_DONUT_NEBULA_LAYOUT,
+  },
+  {
+    id: 43,
+    name: '第43关 · 奶龙星座 · 璀璨星图',
+    subtitle: '点亮夜空中最贪吃的星宿！同时集齐奶龙与香浓珍珠奶茶！',
+    rows: 8,
+    cols: 8,
+    moves: 27,
+    colorsCount: 6,
+    starScores: [5600, 12800, 19800],
+    goals: [
+      { type: 'crate', target: countLayoutLayers(L43_CONSTELLATION_LAYOUT, 'crate') },
+      { type: 'ice', target: countLayoutLayers(L43_CONSTELLATION_LAYOUT, 'ice') },
+      { type: 'collect', color: 'nailong', target: 22 },
+      { type: 'collect', color: 'milktea', target: 22 },
+    ],
+    layout: L43_CONSTELLATION_LAYOUT,
+  },
+  {
+    id: 44,
+    name: '第44关 · 星辰金字塔 · 双重坚冰',
+    subtitle: '金字塔顶端的美食宝藏！合成十字激光快速瓦解高密度木箱群！',
+    rows: 8,
+    cols: 8,
+    moves: 28,
+    colorsCount: 6,
+    starScores: [5800, 13200, 20200],
+    goals: [
+      { type: 'crate', target: countLayoutLayers(L44_ASTRAL_PYRAMID_LAYOUT, 'crate') },
+      { type: 'ice', target: countLayoutLayers(L44_ASTRAL_PYRAMID_LAYOUT, 'ice') },
+      { type: 'chain', target: countLayoutLayers(L44_ASTRAL_PYRAMID_LAYOUT, 'chain') },
+    ],
+    layout: L44_ASTRAL_PYRAMID_LAYOUT,
+  },
+  {
+    id: 45,
+    name: '第45关 · 【Boss战】机械紫兵总督·星海奇袭',
+    subtitle: '紫兵总督率领星际舰队反扑！抵御机械冰弹攻击，集中火力轰破Boss！',
+    rows: 8,
+    cols: 8,
+    moves: 29,
+    colorsCount: 6,
+    starScores: [6000, 13600, 20600],
+    bossMaxHp: 1680,
+    bossAttackInterval: 3,
+    goals: [
+      { type: 'boss', target: 1680 },
+      { type: 'crate', target: countLayoutLayers(L45_BOSS_CELESTIAL_LAYOUT, 'crate') },
+      { type: 'chain', target: countLayoutLayers(L45_BOSS_CELESTIAL_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L45_BOSS_CELESTIAL_LAYOUT, 'ice') },
+    ],
+    layout: L45_BOSS_CELESTIAL_LAYOUT,
+  },
+  {
+    id: 46,
+    name: '第46关 · 银河盛宴长廊 · 满汉全席',
+    subtitle: '吃货的终极狂欢！各收集 20 份烤鸡腿、奶茶与鲜红草莓！',
+    rows: 8,
+    cols: 8,
+    moves: 28,
+    colorsCount: 6,
+    starScores: [6200, 14000, 21000],
+    goals: [
+      { type: 'collect', color: 'drumstick', target: 20 },
+      { type: 'collect', color: 'milktea', target: 20 },
+      { type: 'collect', color: 'strawberry', target: 20 },
+      { type: 'crate', target: countLayoutLayers(L46_GALACTIC_BANQUET_LAYOUT, 'crate') },
+      { type: 'ice', target: countLayoutLayers(L46_GALACTIC_BANQUET_LAYOUT, 'ice') },
+    ],
+    layout: L46_GALACTIC_BANQUET_LAYOUT,
+  },
+  {
+    id: 47,
+    name: '第47关 · 星核反应堆 · 连环能量释放',
+    subtitle: '聚变核心急速运转！连锁引爆特殊炸弹，粉碎双层加固木箱！',
+    rows: 8,
+    cols: 8,
+    moves: 29,
+    colorsCount: 6,
+    starScores: [6400, 14400, 21400],
+    goals: [
+      { type: 'crate', target: countLayoutLayers(L47_STELLAR_REACTOR_LAYOUT, 'crate') },
+      { type: 'chain', target: countLayoutLayers(L47_STELLAR_REACTOR_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L47_STELLAR_REACTOR_LAYOUT, 'ice') },
+    ],
+    layout: L47_STELLAR_REACTOR_LAYOUT,
+  },
+  {
+    id: 48,
+    name: '第48关 · 创世美食神殿 · 坚冰封印',
+    subtitle: '解开沉睡千万年的美食神殿封印！全方位瓦解双重厚冰与锁链！',
+    rows: 8,
+    cols: 8,
+    moves: 30,
+    colorsCount: 6,
+    starScores: [6600, 14800, 21800],
+    goals: [
+      { type: 'crate', target: countLayoutLayers(L48_COSMIC_SEAL_LAYOUT, 'crate') },
+      { type: 'chain', target: countLayoutLayers(L48_COSMIC_SEAL_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L48_COSMIC_SEAL_LAYOUT, 'ice') },
+    ],
+    layout: L48_COSMIC_SEAL_LAYOUT,
+  },
+  {
+    id: 49,
+    name: '第49关 · 登顶之路 · 宇宙吃货试炼',
+    subtitle: '踏上通往食神王座的登天长廊！突破所有防线，召集 24 只奶龙伙伴！',
+    rows: 8,
+    cols: 8,
+    moves: 30,
+    colorsCount: 6,
+    starScores: [6800, 15200, 22200],
+    goals: [
+      { type: 'crate', target: countLayoutLayers(L49_ROAD_TO_THRONES_LAYOUT, 'crate') },
+      { type: 'chain', target: countLayoutLayers(L49_ROAD_TO_THRONES_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L49_ROAD_TO_THRONES_LAYOUT, 'ice') },
+      { type: 'collect', color: 'nailong', target: 24 },
+    ],
+    layout: L49_ROAD_TO_THRONES_LAYOUT,
+  },
+  {
+    id: 50,
+    name: '第50关 · 【终极大决战】宇宙暴食魔王·真·终极食神大决战',
+    subtitle: '全50关巅峰终章！粉碎暴暴龙所有防御，解锁全城放鞭炮盛典，加冕宇宙终极食神！',
+    rows: 8,
+    cols: 8,
+    moves: 32,
+    colorsCount: 6,
+    starScores: [7200, 16000, 23000],
+    bossMaxHp: 1980,
+    bossAttackInterval: 3,
+    goals: [
+      { type: 'boss', target: 1980 },
+      { type: 'crate', target: countLayoutLayers(L50_GRAND_FINALE_BOSS_LAYOUT, 'crate') },
+      { type: 'chain', target: countLayoutLayers(L50_GRAND_FINALE_BOSS_LAYOUT, 'chain') },
+      { type: 'ice', target: countLayoutLayers(L50_GRAND_FINALE_BOSS_LAYOUT, 'ice') },
+    ],
+    layout: L50_GRAND_FINALE_BOSS_LAYOUT,
   },
 ];
 
@@ -988,6 +1577,8 @@ export function loadProgress(): SaveProgress {
     1: createDefaultBoosters(),
     2: createDefaultBoosters(),
     3: createDefaultBoosters(),
+    4: createDefaultBoosters(),
+    5: createDefaultBoosters(),
   };
   const fallback: SaveProgress = {
     playerId: generatePlayerId(),
@@ -1007,7 +1598,7 @@ export function loadProgress(): SaveProgress {
     }
     const parsed = JSON.parse(raw);
     const chapterBoosters: Record<number, Record<BoosterType, number>> = {};
-    for (let c = 1; c <= 3; c++) {
+    for (let c = 1; c <= 5; c++) {
       chapterBoosters[c] = {
         ...createDefaultBoosters(),
         ...(parsed.chapterBoosters?.[c] ?? {}),
