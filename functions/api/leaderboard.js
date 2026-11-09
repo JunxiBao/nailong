@@ -7,6 +7,8 @@
  */
 const MAX_VALID_SCORE = 5_000_000;
 const MAX_VALID_STARS = 150;
+const LEGACY_KV_KEY = 'endless_leaderboard_v1';
+const LEGACY_CACHE_URL = 'https://leaderboard.nailong.internal/endless_leaderboard_v1';
 const KV_KEY = 'leaderboard_store_v2';
 const CACHE_URL = 'https://leaderboard.nailong.internal/leaderboard_store_v2';
 
@@ -46,63 +48,104 @@ function jsonResponse(payload, status = 200) {
 }
 
 async function loadStore(env) {
+  if (memoryStore && (memoryStore.endless.length > 0 || memoryStore.stars.length > 0)) {
+    return memoryStore;
+  }
+
+  let raw = null;
   if (env && env.LEADERBOARD_KV) {
     try {
-      const data = await env.LEADERBOARD_KV.get(KV_KEY, 'json');
-      if (data && typeof data === 'object') return normalizeStore(data);
-    } catch {
-      // fall through
-    }
-  }
-  if (typeof caches !== 'undefined' && caches.default) {
-    try {
-      const cached = await caches.default.match(CACHE_URL);
-      if (cached) {
-        const data = await cached.json();
-        if (data && typeof data === 'object') {
-          memoryStore = normalizeStore(data);
-          return memoryStore;
-        }
+      raw = await env.LEADERBOARD_KV.get(KV_KEY, 'json');
+      if (!raw) {
+        raw = await env.LEADERBOARD_KV.get(LEGACY_KV_KEY, 'json');
       }
     } catch {
       // fall through
     }
   }
-  if (!memoryStore) {
-    memoryStore = { endless: [], stars: [], nicknames: {} };
+
+  if (!raw && typeof caches !== 'undefined' && caches.default) {
+    try {
+      let cached = await caches.default.match(CACHE_URL);
+      if (!cached) {
+        cached = await caches.default.match(LEGACY_CACHE_URL);
+      }
+      if (cached) {
+        raw = await cached.json();
+      }
+    } catch {
+      // fall through
+    }
   }
+
+  memoryStore = normalizeStore(raw);
   return memoryStore;
 }
 
 function normalizeStore(raw) {
+  let endless = [];
+  let stars = [];
+  let nicknames = {};
+
   if (Array.isArray(raw)) {
-    return { endless: raw, stars: [], nicknames: {} };
+    endless = raw;
+  } else if (raw && typeof raw === 'object') {
+    endless = Array.isArray(raw.endless) ? raw.endless : [];
+    stars = Array.isArray(raw.stars) ? raw.stars : [];
+    nicknames = raw.nicknames && typeof raw.nicknames === 'object' ? raw.nicknames : {};
   }
-  return {
-    endless: Array.isArray(raw.endless) ? raw.endless : [],
-    stars: Array.isArray(raw.stars) ? raw.stars : [],
-    nicknames: raw.nicknames && typeof raw.nicknames === 'object' ? raw.nicknames : {},
-  };
+
+  // Populate nicknames map for unique check
+  for (const r of endless) {
+    if (r && r.playerId && r.nickname) {
+      const lower = String(r.nickname).toLowerCase();
+      if (!nicknames[lower]) {
+        nicknames[lower] = r.playerId;
+      }
+    }
+  }
+
+  // Backfill stars leaderboard from existing endless players so historical users appear on both boards
+  if (stars.length === 0 && endless.length > 0) {
+    stars = endless.map((r) => ({
+      playerId: r.playerId,
+      nickname: r.nickname,
+      score: Math.max(18, Math.min(MAX_VALID_STARS, Math.floor((r.score || 0) / 120))),
+      updatedAt: r.updatedAt || Date.now(),
+    }));
+  }
+
+  return { endless, stars, nicknames };
 }
 
 async function saveStore(env, store) {
   memoryStore = store;
+  const payload = JSON.stringify(store);
   if (env && env.LEADERBOARD_KV) {
     try {
-      await env.LEADERBOARD_KV.put(KV_KEY, JSON.stringify(store));
+      await env.LEADERBOARD_KV.put(KV_KEY, payload);
+      await env.LEADERBOARD_KV.put(LEGACY_KV_KEY, payload);
     } catch {
       // ignore
     }
   }
   if (typeof caches !== 'undefined' && caches.default) {
     try {
-      const resp = new Response(JSON.stringify(store), {
+      const resp1 = new Response(payload, {
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'public, max-age=31536000',
         },
       });
-      await caches.default.put(CACHE_URL, resp);
+      await caches.default.put(CACHE_URL, resp1);
+
+      const resp2 = new Response(payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=31536000',
+        },
+      });
+      await caches.default.put(LEGACY_CACHE_URL, resp2);
     } catch {
       // ignore
     }

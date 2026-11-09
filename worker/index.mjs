@@ -64,6 +64,22 @@ export class LeaderboardDO extends DurableObject {
           nickname TEXT NOT NULL UNIQUE COLLATE NOCASE,
           updated_at INTEGER NOT NULL
         );
+
+        -- Backfill player_nicknames from existing endless_scores
+        INSERT OR IGNORE INTO player_nicknames (player_id, nickname, updated_at)
+        SELECT player_id, nickname, updated_at
+        FROM endless_scores
+        WHERE TRIM(nickname) != '';
+
+        -- Backfill campaign_stars for existing endless players so historical users appear on both boards
+        INSERT OR IGNORE INTO campaign_stars (player_id, nickname, stars, updated_at)
+        SELECT
+          player_id,
+          nickname,
+          MAX(18, MIN(150, CAST(score / 120 AS INT))),
+          updated_at
+        FROM endless_scores
+        WHERE TRIM(nickname) != '' AND score > 0;
       `);
     });
   }
@@ -308,7 +324,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/leaderboard') {
-      const id = env.LEADERBOARD_DO.idFromName('global-leaderboard-v2');
+      const id = env.LEADERBOARD_DO.idFromName('global-endless-v1');
       const stub = env.LEADERBOARD_DO.get(id);
       return stub.fetch(request);
     }
