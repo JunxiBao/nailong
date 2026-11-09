@@ -27,6 +27,7 @@ import {
   CAMPAIGN_CHAPTERS,
   CAMPAIGN_LEVELS,
   createDefaultBoosters,
+  DEFAULT_BOOSTERS,
   ENDLESS_LEVEL,
   getChapterStars,
   isAllClear,
@@ -373,7 +374,12 @@ export class GameApp {
     if (!this.progress.chapterBoosters[chap]) {
       this.progress.chapterBoosters[chap] = createDefaultBoosters();
     }
-    return this.progress.chapterBoosters[chap];
+    const b = this.progress.chapterBoosters[chap];
+    b.hammer = Math.min(DEFAULT_BOOSTERS.hammer, Math.max(0, b.hammer));
+    b.swap_glove = Math.min(DEFAULT_BOOSTERS.swap_glove, Math.max(0, b.swap_glove));
+    b.shuffle = Math.min(DEFAULT_BOOSTERS.shuffle, Math.max(0, b.shuffle));
+    b.plus5 = Math.min(DEFAULT_BOOSTERS.plus5, Math.max(0, b.plus5));
+    return b;
   }
 
   private renderUI(): void {
@@ -1519,12 +1525,6 @@ export class GameApp {
       }
       this.selectedChapter = this.getFurthestUnlockedChapter();
 
-      // Reward 1 random booster on 3-star clear!
-      if (this.earnedStars === 3) {
-        const chapBoosters = this.getActiveBoosters();
-        chapBoosters.hammer++;
-        this.progress.boosters = { ...chapBoosters };
-      }
       saveProgress(this.progress);
       this.syncCampaignStarsToServer();
 

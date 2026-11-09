@@ -1599,9 +1599,12 @@ export function loadProgress(): SaveProgress {
     const parsed = JSON.parse(raw);
     const chapterBoosters: Record<number, Record<BoosterType, number>> = {};
     for (let c = 1; c <= 5; c++) {
+      const src = parsed.chapterBoosters?.[c] ?? {};
       chapterBoosters[c] = {
-        ...createDefaultBoosters(),
-        ...(parsed.chapterBoosters?.[c] ?? {}),
+        hammer: Math.min(DEFAULT_BOOSTERS.hammer, Math.max(0, Number(src.hammer ?? DEFAULT_BOOSTERS.hammer))),
+        swap_glove: Math.min(DEFAULT_BOOSTERS.swap_glove, Math.max(0, Number(src.swap_glove ?? DEFAULT_BOOSTERS.swap_glove))),
+        shuffle: Math.min(DEFAULT_BOOSTERS.shuffle, Math.max(0, Number(src.shuffle ?? DEFAULT_BOOSTERS.shuffle))),
+        plus5: Math.min(DEFAULT_BOOSTERS.plus5, Math.max(0, Number(src.plus5 ?? DEFAULT_BOOSTERS.plus5))),
       };
     }
     const merged: SaveProgress = {
