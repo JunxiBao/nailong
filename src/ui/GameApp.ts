@@ -238,6 +238,9 @@ export class GameApp {
   }
 
   private async refreshGlobalLeaderboard(): Promise<void> {
+    if (this.progress.playerNickname && this.progress.playerNickname.trim()) {
+      await this.syncCampaignStarsToServer();
+    }
     const [endlessData, starsData] = await Promise.all([
       fetchGlobalLeaderboard(this.progress.playerId, 'endless'),
       fetchGlobalLeaderboard(this.progress.playerId, 'stars'),

@@ -105,16 +105,7 @@ function normalizeStore(raw) {
     }
   }
 
-  // Backfill stars leaderboard from existing endless players so historical users appear on both boards
-  if (stars.length === 0 && endless.length > 0) {
-    stars = endless.map((r) => ({
-      playerId: r.playerId,
-      nickname: r.nickname,
-      score: Math.max(18, Math.min(MAX_VALID_STARS, Math.floor((r.score || 0) / 120))),
-      updatedAt: r.updatedAt || Date.now(),
-    }));
-  }
-
+  // Do NOT fake or estimate stars; leave stars empty until real players submit their authentic progress
   return { endless, stars, nicknames };
 }
 

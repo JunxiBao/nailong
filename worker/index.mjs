@@ -59,10 +59,9 @@ export class LeaderboardDO extends DurableObject {
         CREATE INDEX IF NOT EXISTS idx_campaign_stars_desc
         ON campaign_stars (stars DESC, updated_at ASC);
 
-        CREATE TABLE IF NOT EXISTS player_nicknames (
-          player_id TEXT PRIMARY KEY,
-          nickname TEXT NOT NULL UNIQUE COLLATE NOCASE,
-          updated_at INTEGER NOT NULL
+        CREATE TABLE IF NOT EXISTS meta_flags (
+          flag_name TEXT PRIMARY KEY,
+          created_at INTEGER NOT NULL
         );
 
         -- Backfill player_nicknames from existing endless_scores
@@ -70,17 +69,17 @@ export class LeaderboardDO extends DurableObject {
         SELECT player_id, nickname, updated_at
         FROM endless_scores
         WHERE TRIM(nickname) != '';
-
-        -- Backfill campaign_stars for existing endless players so historical users appear on both boards
-        INSERT OR IGNORE INTO campaign_stars (player_id, nickname, stars, updated_at)
-        SELECT
-          player_id,
-          nickname,
-          MAX(18, MIN(150, CAST(score / 120 AS INT))),
-          updated_at
-        FROM endless_scores
-        WHERE TRIM(nickname) != '' AND score > 0;
       `);
+
+      const purged = this.ctx.storage.sql
+        .exec(`SELECT flag_name FROM meta_flags WHERE flag_name = 'purged_fake_stars_v2'`)
+        .toArray();
+      if (purged.length === 0) {
+        this.ctx.storage.sql.exec(`
+          DELETE FROM campaign_stars;
+          INSERT INTO meta_flags (flag_name, created_at) VALUES ('purged_fake_stars_v2', ${Date.now()});
+        `);
+      }
     });
   }
 
@@ -289,8 +288,8 @@ export class LeaderboardDO extends DurableObject {
         }
       } else {
         const prevVal = Number(existingRecord[0].val);
-        const nextVal = Math.max(prevVal, val);
-        const nextTime = val > prevVal ? now : undefined;
+        const nextVal = isStars ? val : Math.max(prevVal, val);
+        const nextTime = (isStars ? val !== prevVal : val > prevVal) ? now : undefined;
         if (nextTime !== undefined) {
           this.ctx.storage.sql.exec(
             `UPDATE ${tableName}
