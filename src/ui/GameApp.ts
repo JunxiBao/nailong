@@ -217,6 +217,7 @@ export class GameApp {
 
     this.loadStickerManifest();
     this.refreshGlobalLeaderboard();
+    this.syncCampaignStarsToServer();
 
     // If no nickname stored in cache, prompt player immediately upon opening the game!
     if (!this.progress.playerNickname || !this.progress.playerNickname.trim()) {
