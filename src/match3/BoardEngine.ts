@@ -1148,127 +1148,132 @@ export class BoardEngine {
   }
 
   /**
-   * Applies vertical gravity (passing through holes, stopping at crates or chained tiles)
-   * and spawns fresh tiles from above each column!
+   * Applies vertical gravity (passing through holes, stopping at crates or chained tiles),
+   * diagonal slides around obstacles, and top/pocket refilling in an iterative loop until
+   * every non-hole, non-crate playable cell has a tile!
    */
   private applyGravityAndRefill(): FallMove[] {
-    const falls: FallMove[] = [];
-
-    for (let c = 0; c < this.cols; c++) {
-      // Process segments separated by impassable crates or chained tiles
-      // Note: holes can be passed through by falling tiles (classic 开心消消乐 behavior!),
-      // whereas crates and chained tiles stay anchored in place.
-      let writeRow = this.rows - 1;
-
-      while (writeRow >= 0) {
-        const dst = this.grid[writeRow][c];
-        if (dst.hole) {
-          writeRow--;
-          continue;
+    const startCoords = new Map<number, { row: number; col: number }>();
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        const t = this.grid[r][c].tile;
+        if (t) {
+          startCoords.set(t.id, { row: r, col: c });
         }
-        if (dst.crateHp > 0 || dst.chain) {
-          writeRow--;
-          continue;
-        }
-        if (dst.tile !== null) {
-          writeRow--;
-          continue;
-        }
+      }
+    }
 
-        // Find the nearest movable tile above writeRow without crossing a crate or chained cell
-        let srcRow = writeRow - 1;
-        let blocked = false;
-        let foundRow = -1;
-        while (srcRow >= 0) {
-          const above = this.grid[srcRow][c];
-          if (above.crateHp > 0 || above.chain) {
-            blocked = true;
-            break;
+    const skySpawnCounts = new Array<number>(this.cols).fill(0);
+
+    for (let pass = 0; pass < this.rows * this.cols * 2; pass++) {
+      // Phase A: Vertical gravity & sky refill per column
+      for (let c = 0; c < this.cols; c++) {
+        let writeRow = this.rows - 1;
+
+        while (writeRow >= 0) {
+          const dst = this.grid[writeRow][c];
+          if (dst.hole || dst.crateHp > 0 || dst.chain || dst.tile !== null) {
+            writeRow--;
+            continue;
           }
-          if (!above.hole && above.tile !== null) {
-            foundRow = srcRow;
-            break;
-          }
-          srcRow--;
-        }
 
-        if (foundRow >= 0) {
-          const moving = this.grid[foundRow][c].tile!;
-          this.grid[writeRow][c].tile = moving;
-          this.grid[foundRow][c].tile = null;
-          falls.push({
-            tileId: moving.id,
-            color: moving.color,
-            special: moving.special,
-            fromRow: foundRow,
-            fromCol: c,
-            toRow: writeRow,
-            toCol: c,
-          });
-          writeRow--;
-        } else if (!blocked) {
-          // Unblocked all the way to top -> spawn new tiles from sky!
-          let spawnOffset = -1;
-          for (let r = writeRow; r >= 0; r--) {
-            const target = this.grid[r][c];
-            if (target.hole) continue;
-            if (target.crateHp > 0 || target.chain) break;
-            if (target.tile === null) {
-              const fresh = this.createTile(this.randomColor(), 'none');
-              target.tile = fresh;
-              falls.push({
-                tileId: fresh.id,
-                color: fresh.color,
-                special: fresh.special,
-                fromRow: spawnOffset--,
-                fromCol: c,
-                toRow: r,
-                toCol: c,
-              });
+          let srcRow = writeRow - 1;
+          let blocked = false;
+          let foundRow = -1;
+          while (srcRow >= 0) {
+            const above = this.grid[srcRow][c];
+            if (above.crateHp > 0 || above.chain) {
+              blocked = true;
+              break;
             }
+            if (!above.hole && above.tile !== null) {
+              foundRow = srcRow;
+              break;
+            }
+            srcRow--;
           }
-          break;
-        } else {
-          // Blocked by a crate/chain above: try diagonal slide from top-left or top-right!
-          let slid = false;
-          if (writeRow > 0) {
-            for (const dc of [-1, 1]) {
-              const nc = c + dc;
-              if (nc < 0 || nc >= this.cols) continue;
-              const diag = this.grid[writeRow - 1][nc];
-              if (!diag.hole && diag.crateHp === 0 && !diag.chain && diag.tile !== null) {
-                const moving = diag.tile;
-                diag.tile = null;
-                dst.tile = moving;
-                falls.push({
-                  tileId: moving.id,
-                  color: moving.color,
-                  special: moving.special,
-                  fromRow: writeRow - 1,
-                  fromCol: nc,
-                  toRow: writeRow,
-                  toCol: c,
-                });
-                slid = true;
-                break;
+
+          if (foundRow >= 0) {
+            dst.tile = this.grid[foundRow][c].tile;
+            this.grid[foundRow][c].tile = null;
+            writeRow--;
+          } else if (!blocked) {
+            // Unblocked all the way to top -> spawn fresh tiles from sky!
+            for (let r = writeRow; r >= 0; r--) {
+              const target = this.grid[r][c];
+              if (target.hole) continue;
+              if (target.crateHp > 0 || target.chain) break;
+              if (target.tile === null) {
+                const fresh = this.createTile(this.randomColor(), 'none');
+                target.tile = fresh;
+                skySpawnCounts[c]++;
+                startCoords.set(fresh.id, { row: -skySpawnCounts[c], col: c });
               }
             }
+            break;
+          } else {
+            writeRow--;
           }
-          if (!slid) {
-            // Spawn directly into shadowed pocket so pocket cells never stay permanently empty!
+        }
+      }
+
+      // Phase B: Diagonal slide into remaining blocked empty cells (bottom-up)
+      let slid = false;
+      for (let r = this.rows - 1; r >= 1; r--) {
+        for (let c = 0; c < this.cols; c++) {
+          const dst = this.grid[r][c];
+          if (dst.hole || dst.crateHp > 0 || dst.chain || dst.tile !== null) continue;
+
+          for (const dc of [-1, 1]) {
+            const nc = c + dc;
+            if (nc < 0 || nc >= this.cols) continue;
+            const diag = this.grid[r - 1][nc];
+            if (!diag.hole && diag.crateHp === 0 && !diag.chain && diag.tile !== null) {
+              dst.tile = diag.tile;
+              diag.tile = null;
+              slid = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // Re-run vertical gravity whenever any diagonal slide created a vacancy in an adjacent column
+      if (slid) continue;
+
+      // Phase C: Completely sealed pocket cells (surrounded by crates/chains) -> spawn directly
+      let hasEmpty = false;
+      for (let r = 0; r < this.rows; r++) {
+        for (let c = 0; c < this.cols; c++) {
+          const dst = this.grid[r][c];
+          if (!dst.hole && dst.crateHp === 0 && !dst.chain && dst.tile === null) {
             const fresh = this.createTile(this.randomColor(), 'none');
             dst.tile = fresh;
-            falls.push({
-              tileId: fresh.id,
-              color: fresh.color,
-              special: fresh.special,
-              fromRow: writeRow - 1,
-              fromCol: c,
-              toRow: writeRow,
-              toCol: c,
-            });
+            startCoords.set(fresh.id, { row: r - 1, col: c });
+            hasEmpty = true;
           }
-          writeRow--;
+        }
+      }
+
+      if (!hasEmpty) break;
+    }
+
+    const falls: FallMove[] = [];
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        const t = this.grid[r][c].tile;
+        if (!t) continue;
+        const start = startCoords.get(t.id);
+        if (start && (start.row !== r || start.col !== c)) {
+          falls.push({
+            tileId: t.id,
+            color: t.color,
+            special: t.special,
+            fromRow: start.row,
+            fromCol: start.col,
+            toRow: r,
+            toCol: c,
+          });
         }
       }
     }

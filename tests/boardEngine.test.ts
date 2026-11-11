@@ -456,4 +456,29 @@ describe('BoardEngine Match-3 Core Mechanics', () => {
     expect(() => drawHighDetailBombExplosion(dummyCtx, 64, 64, 64, 'bomb5', 0.6, 2.5)).not.toThrow();
     expect(() => drawHighDetailBombExplosion(dummyCtx, 64, 64, 64, 'belly_slam', 0.2, 0.5)).not.toThrow();
   });
+
+  it('never leaves empty playable cells after diagonal slides around chains/crates (Level 45 regression)', () => {
+    const lv45 = CAMPAIGN_LEVELS.find((l) => l.id === 45)!;
+    const engine = new BoardEngine(lv45, () => 0.37);
+
+    // Put chains above (3,2) and (4,1) to reproduce exact Level 45 diagonal slide scenario
+    engine.grid[2][2].crateHp = 0;
+    engine.grid[2][2].chain = true;
+    engine.grid[2][2].tile = { id: 9001, color: 'nailong', special: 'none' };
+    engine.grid[3][1].chain = true;
+
+    // Clear (3,2) and (4,1) below the chains via hammer / belly slam
+    engine.useHammer({ row: 3, col: 2 });
+    engine.useHammer({ row: 4, col: 1 });
+    engine.useBellySlam();
+
+    for (let r = 0; r < engine.rows; r++) {
+      for (let c = 0; c < engine.cols; c++) {
+        const cell = engine.grid[r][c];
+        if (!cell.hole && cell.crateHp === 0) {
+          expect(cell.tile, `Cell (${r},${c}) must not be empty`).not.toBeNull();
+        }
+      }
+    }
+  });
 });
